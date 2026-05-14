@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MiniBMS EV · Battery Control Unit v2</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════
+   TOKENS — Industrial engineering palette
+═══════════════════════════════════════════════════════ */
+:root{
+  --bg0:#0D1117;--bg1:#161B22;--bg2:#1C2230;--bg3:#21293A;--bg4:#28334A;
+  --border:#2E3D50;--border-sub:#1E2C3C;
+  --blue:#1A7EC8;--blue-d:rgba(26,126,200,.13);--blue-b:rgba(26,126,200,.06);
+  --green:#3A9E5F;--green-d:rgba(58,158,95,.12);--green-b:rgba(58,158,95,.05);
+  --amber:#C98A1A;--amber-d:rgba(201,138,26,.13);
+  --red:#C84040;--red-d:rgba(200,64,64,.13);
+  --t1:#C9D1D9;--t2:#8B949E;--t3:#4D6070;--t4:#283848;
+  --r:5px;
+}
+*,::before,::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg0);color:var(--t1);overflow-x:hidden}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg1)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ═══════════════════════════════════════════════════════
+   BOOT SCREEN — professional initialization
+═══════════════════════════════════════════════════════ */
+#boot{position:fixed;inset:0;z-index:9999;background:var(--bg0);display:flex;align-items:center;justify-content:center;transition:opacity .6s ease}
+#boot.out{opacity:0;pointer-events:none}
+.boot-panel{width:min(500px,90vw)}
+.boot-pre{font-size:9px;letter-spacing:.3em;color:var(--t3);text-transform:uppercase;margin-bottom:16px;font-family:'Courier New',monospace}
+.boot-title{font-size:26px;font-weight:700;color:var(--t1);letter-spacing:.02em;margin-bottom:3px}
+.boot-title em{color:var(--blue);font-style:normal}
+.boot-sub{font-size:10px;color:var(--t3);letter-spacing:.06em;margin-bottom:22px;font-family:'Courier New',monospace}
+.boot-line{display:flex;align-items:baseline;gap:10px;font-size:10px;line-height:2;color:var(--t2);opacity:0;transition:opacity .15s ease;font-family:'Courier New',monospace}
+.boot-line.show{opacity:1}
+.bl-arrow{color:var(--t3);font-size:9px;flex-shrink:0}
+.bl-text{flex:1;color:var(--t2)}
+.bl-ok{color:var(--green);font-weight:700;font-size:9px}
+.bl-warn{color:var(--amber);font-weight:700;font-size:9px}
+.boot-prog-wrap{margin-top:20px;height:2px;background:var(--bg3);border-radius:1px;overflow:hidden}
+.boot-prog-fill{height:100%;background:var(--blue);border-radius:1px;width:0%;transition:width .1s linear}
+.boot-cursor{display:inline-block;width:7px;height:12px;background:var(--t3);margin-left:2px;vertical-align:text-bottom;animation:blink .8s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* ═══════════════════════════════════════════════════════
+   DASHBOARD WRAPPER
+═══════════════════════════════════════════════════════ */
+#dashboard{opacity:0;transition:opacity .6s ease}
+#dashboard.show{opacity:1}
+
+/* ═══════════════════════════════════════════════════════
+   TOPBAR
+═══════════════════════════════════════════════════════ */
+.topbar{position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:14px;padding:8px 20px;background:var(--bg1);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.brand-icon{width:32px;height:32px;border-radius:5px;background:var(--blue-d);border:1px solid rgba(26,126,200,.3);display:flex;align-items:center;justify-content:center}
+.brand-name{font-size:13px;font-weight:700;letter-spacing:.02em}
+.brand-name em{color:var(--blue);font-style:normal}
+.brand-sub{font-size:9px;color:var(--t3);letter-spacing:.05em;text-transform:uppercase;margin-top:1px}
+
+/* drive modes */
+.dm-group{display:flex;gap:1px;background:var(--bg0);border:1px solid var(--border);border-radius:4px;padding:3px;flex-shrink:0}
+.dm-btn{padding:4px 12px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:none;background:transparent;color:var(--t3);transition:all .15s}
+.dm-btn:hover{color:var(--t2)}
+.dm-eco.on{background:var(--green-d);color:var(--green)}
+.dm-normal.on{background:var(--blue-d);color:var(--blue)}
+.dm-sport.on{background:var(--red-d);color:var(--red)}
+
+/* comm strip */
+.comm-strip{display:flex;align-items:center;gap:5px;margin-left:auto}
+.comm-badge{display:flex;align-items:center;gap:5px;padding:3px 9px;background:var(--bg2);border:1px solid var(--border);border-radius:3px;font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);transition:all .2s;user-select:none;white-space:nowrap}
+.comm-badge.on-c{border-color:rgba(26,126,200,.4);color:var(--blue)}
+.comm-badge.on-g{border-color:rgba(58,158,95,.4);color:var(--green)}
+.comm-badge.on-a{border-color:rgba(201,138,26,.4);color:var(--amber)}
+.comm-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.comm-dot.blink{animation:cblink .25s ease}
+@keyframes cblink{0%,100%{opacity:1}50%{opacity:.05}}
+
+.topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.clock{font-family:'Courier New',monospace;font-size:11px;color:var(--t2);letter-spacing:.05em}
+.conn-badge{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:4px;font-size:9px;font-weight:600;border:1px solid;cursor:pointer;transition:all .2s;user-select:none}
+.conn-live{background:var(--green-d);color:var(--green);border-color:rgba(58,158,95,.35)}
+.conn-demo{background:var(--blue-d);color:var(--blue);border-color:rgba(26,126,200,.35)}
+.conn-err{background:var(--red-d);color:var(--red);border-color:rgba(200,64,64,.35)}
+.pulse-dot{width:5px;height:5px;border-radius:50%;animation:pulse 1.6s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+.state-pill{padding:3px 12px;border-radius:3px;font-size:9px;font-weight:700;border:1px solid;letter-spacing:.07em;transition:all .25s;text-transform:uppercase;font-family:'Courier New',monospace}
+.pill-idle{background:var(--bg2);color:var(--t2);border-color:var(--border)}
+.pill-disc{background:var(--blue-d);color:var(--blue);border-color:rgba(26,126,200,.35)}
+.pill-chg{background:var(--green-d);color:var(--green);border-color:rgba(58,158,95,.35)}
+.pill-flt{background:var(--red-d);color:var(--red);border-color:rgba(200,64,64,.4);animation:ffsh 1s ease-in-out infinite}
+@keyframes ffsh{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ═══════════════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════════════ */
+.main{max-width:1600px;margin:0 auto;padding:12px 18px;position:relative;z-index:2}
+
+.url-bar{display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);margin-bottom:12px}
+.url-label{font-size:9px;color:var(--t3);white-space:nowrap;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
+.url-input{flex:1;background:transparent;border:none;font-family:'Courier New',monospace;font-size:11px;color:var(--t1);outline:none}
+.url-input::placeholder{color:var(--t4)}
+.btn{padding:5px 13px;border-radius:3px;font-size:9px;font-weight:700;cursor:pointer;border:1px solid;transition:all .15s;letter-spacing:.03em}
+.btn-c{background:var(--blue-d);color:var(--blue);border-color:rgba(26,126,200,.3)}
+.btn-c:hover{background:rgba(26,126,200,.22)}
+.btn-g{background:var(--bg2);color:var(--t2);border-color:var(--border)}
+.btn-g:hover{background:var(--bg3);color:var(--t1)}
+.btn-green{background:var(--green-d);color:var(--green);border-color:rgba(58,158,95,.3)}
+.btn-green:hover{background:rgba(58,158,95,.2)}
+.btn-red{background:var(--red-d);color:var(--red);border-color:rgba(200,64,64,.3)}
+.btn-red:hover{background:rgba(200,64,64,.2)}
+.btn-amber{background:var(--amber-d);color:var(--amber);border-color:rgba(201,138,26,.3)}
+.btn-amber:hover{background:rgba(201,138,26,.2)}
+
+/* ═══════════════════════════════════════════════════════
+   HUD STRIP
+═══════════════════════════════════════════════════════ */
+.hud{display:grid;grid-template-columns:230px repeat(5,1fr);gap:8px;margin-bottom:10px}
+.hud-soc{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:10px 10px 8px;display:flex;flex-direction:column;align-items:center}
+.hud-soc-lbl{font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:4px}
+.hud-soc-sub{font-size:9px;color:var(--t3);margin-top:2px;text-align:center;font-family:'Courier New',monospace}
+.hud-card{background:var(--bg1);border:1px solid var(--border);border-left:2px solid var(--hc,var(--blue));border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;justify-content:space-between;position:relative}
+.hud-lbl{font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;font-weight:700}
+.hud-val{font-size:28px;font-weight:700;line-height:1;color:var(--t1);transition:color .25s;font-variant-numeric:tabular-nums;font-family:'Courier New',monospace}
+.hud-unit{font-size:11px;font-weight:400;color:var(--t3)}
+.hud-sub{font-size:9px;color:var(--t3);font-family:'Courier New',monospace}
+.hud-bar{height:2px;background:var(--bg0);border-radius:1px;overflow:hidden;margin-top:8px}
+.hud-fill{height:100%;border-radius:1px;background:var(--hc,var(--blue));transition:width .7s cubic-bezier(.4,0,.2,1)}
+
+/* ═══════════════════════════════════════════════════════
+   CARDS & GRID
+═══════════════════════════════════════════════════════ */
+.row{display:grid;gap:10px;margin-bottom:10px}
+.r-main{grid-template-columns:276px minmax(0,1fr) 248px}
+.r-4{grid-template-columns:repeat(4,1fr)}
+.r-2{grid-template-columns:1fr 1fr}
+.card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:12px;position:relative}
+.card-hd{font-size:8px;font-weight:700;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.card-hd-a{font-size:10px;font-weight:600;letter-spacing:0;color:var(--blue);font-family:'Courier New',monospace}
+.card-sep{height:1px;background:var(--border-sub);margin:8px 0}
+
+/* ═══════════════════════════════════════════════════════
+   BATTERY CELLS (18650 style)
+═══════════════════════════════════════════════════════ */
+.cells-row{display:flex;gap:8px;height:96px;margin-bottom:10px}
+.cell{flex:1;display:flex;flex-direction:column;align-items:center;position:relative}
+.cell-cap{width:30%;height:6px;background:var(--border);border-radius:3px 3px 0 0;border:1px solid var(--t3);border-bottom:none;flex-shrink:0;z-index:1}
+.cell-body{width:100%;flex:1;border-radius:0 0 4px 4px;overflow:hidden;position:relative;border:1px solid var(--border);background:var(--bg0)}
+.cell-fill{position:absolute;bottom:0;left:0;right:0;transition:height .8s cubic-bezier(.4,0,.2,1),background .4s}
+.cell-gloss{position:absolute;top:0;left:0;right:0;height:35%;background:linear-gradient(to bottom,rgba(255,255,255,.04),transparent);pointer-events:none}
+.cell-info{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2;pointer-events:none;gap:2px}
+.cell-volt{font-size:10px;font-weight:700;color:#fff;font-family:'Courier New',monospace;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.cell-tag{font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.04em}
+.cell-icon{font-size:9px;position:absolute;top:4px;left:50%;transform:translateX(-50%);z-index:3;transition:opacity .3s}
+
+/* ═══════════════════════════════════════════════════════
+   BALANCING + REGEN
+═══════════════════════════════════════════════════════ */
+.bal-row{display:flex;align-items:center;justify-content:space-around;height:18px;margin-bottom:8px}
+.bal-arr{font-size:14px;color:var(--amber);opacity:0;transition:opacity .4s;animation:balpulse 1.4s ease-in-out infinite paused}
+.bal-arr.on{opacity:1;animation-play-state:running}
+@keyframes balpulse{0%,100%{opacity:1}50%{opacity:.2}}
+
+.regen-row{display:flex;align-items:center;gap:8px;padding:6px 9px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;margin-bottom:8px;transition:border-color .2s}
+.regen-row.on{border-color:rgba(58,158,95,.3)}
+.regen-icon{width:24px;height:24px;border-radius:4px;background:var(--green-b);border:1px solid rgba(58,158,95,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px}
+.regen-label{font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;font-weight:700}
+.regen-val{font-size:13px;font-weight:700;color:var(--green);transition:color .2s;font-variant-numeric:tabular-nums;font-family:'Courier New',monospace}
+.regen-bar-bg{flex:1;height:2px;background:var(--bg0);border-radius:1px;overflow:hidden}
+.regen-bar-fill{height:100%;background:var(--green);border-radius:1px;width:0%;transition:width .5s}
+
+/* contactor row */
+.contactor-row{display:flex;align-items:center;gap:8px;padding:5px 9px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;font-weight:600;transition:all .2s;font-family:'Courier New',monospace}
+.contactor-row.closed{border-color:rgba(58,158,95,.3);color:var(--green)}
+.contactor-row.open{color:var(--t2)}
+.contactor-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;transition:background .2s}
+
+/* ═══════════════════════════════════════════════════════
+   ENERGY FLOW SVG STYLES
+═══════════════════════════════════════════════════════ */
+@keyframes flow-r{from{stroke-dashoffset:32}to{stroke-dashoffset:0}}
+@keyframes flow-l{from{stroke-dashoffset:0}to{stroke-dashoffset:32}}
+.ef-path-active-r{animation:flow-r 1s linear infinite}
+.ef-path-active-l{animation:flow-l 1s linear infinite}
+
+/* ═══════════════════════════════════════════════════════
+   STATE MACHINE + FAULTS
+═══════════════════════════════════════════════════════ */
+.sm-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:10px}
+.sm-node{padding:7px 5px;border-radius:3px;font-size:9px;font-weight:700;text-align:center;border:1px solid;opacity:.25;transition:all .3s;letter-spacing:.06em;text-transform:uppercase;font-family:'Courier New',monospace}
+.sm-node.on{opacity:1}
+.sn-idle{background:var(--bg2);color:var(--t2);border-color:var(--border)}
+.sn-disc{background:var(--blue-d);color:var(--blue);border-color:rgba(26,126,200,.3)}
+.sn-chg{background:var(--green-d);color:var(--green);border-color:rgba(58,158,95,.3)}
+.sn-flt{background:var(--red-d);color:var(--red);border-color:rgba(200,64,64,.3)}
+.sn-flt.on{animation:ffsh 1s ease-in-out infinite}
+
+.fault-row{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:3px;border:1px solid;margin-bottom:4px;font-size:10px;font-weight:600;transition:all .2s}
+.f-ok{background:rgba(58,158,95,.05);color:rgba(58,158,95,.85);border-color:rgba(58,158,95,.18)}
+.f-err{background:var(--red-d);color:var(--red);border-color:rgba(200,64,64,.35);animation:ffsh 1s ease-in-out infinite}
+.f-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;transition:background .2s}
+.f-lbl{flex:1}
+.f-val{font-size:9px;opacity:.75;font-family:'Courier New',monospace}
+
+/* ═══════════════════════════════════════════════════════
+   THERMAL HEATMAP
+═══════════════════════════════════════════════════════ */
+.therm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.therm-cell{border-radius:3px;padding:6px 5px;text-align:center;border:1px solid;transition:all .4s;position:relative}
+.therm-val{font-size:11px;font-weight:700;font-family:'Courier New',monospace}
+.therm-lbl{font-size:8px;color:var(--t3);margin-top:2px;text-transform:uppercase;letter-spacing:.05em}
+
+/* ═══════════════════════════════════════════════════════
+   AI PREDICTIONS
+═══════════════════════════════════════════════════════ */
+.ai-metric{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:8px 10px;margin-bottom:6px}
+.ai-lbl{font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.ai-lbl-r{font-size:8px;color:var(--t3)}
+.ai-val{font-size:18px;font-weight:700;color:var(--t1);line-height:1;font-variant-numeric:tabular-nums;font-family:'Courier New',monospace}
+.ai-sub{font-size:9px;color:var(--t3);margin-top:3px}
+.ai-bar{height:2px;background:var(--bg0);border-radius:1px;overflow:hidden;margin-top:7px}
+.ai-bar-fill{height:100%;border-radius:1px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.anom-flag{display:flex;align-items:center;gap:7px;padding:6px 9px;border-radius:3px;border:1px solid;font-size:10px;font-weight:600;transition:all .2s;margin-bottom:6px}
+.anom-ok{background:rgba(58,158,95,.06);color:rgba(58,158,95,.9);border-color:rgba(58,158,95,.2)}
+.anom-warn{background:var(--amber-d);color:var(--amber);border-color:rgba(201,138,26,.3);animation:ffsh 1.5s ease-in-out infinite}
+
+/* ═══════════════════════════════════════════════════════
+   HEALTH + RANGE
+═══════════════════════════════════════════════════════ */
+.grade-letter{font-size:48px;font-weight:800;line-height:1;transition:color .4s;display:block;text-align:center;font-family:'Courier New',monospace}
+.grade-sub{font-size:9px;color:var(--t3);text-align:center;letter-spacing:.07em;text-transform:uppercase;margin-top:2px}
+.hb-row{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.hb-lbl{font-size:8px;color:var(--t3);width:40px;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0}
+.hb-bg{flex:1;height:2px;background:var(--bg0);border-radius:1px;overflow:hidden}
+.hb-fill{height:100%;border-radius:1px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.hb-val{font-size:9px;font-weight:700;color:var(--t1);width:32px;text-align:right;font-family:'Courier New',monospace}
+
+.range-card{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:8px 10px;display:flex;align-items:center;gap:10px;margin-top:8px}
+.range-km{font-size:22px;font-weight:700;line-height:1;transition:color .2s;font-variant-numeric:tabular-nums;font-family:'Courier New',monospace}
+.range-unit{font-size:9px;color:var(--t3)}
+.range-tte-val{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;font-family:'Courier New',monospace}
+.range-tte-lbl{font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em}
+
+.sess-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:8px}
+.sess-card{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:7px}
+.sess-lbl{font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.sess-val{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;font-family:'Courier New',monospace}
+.sess-unit{font-size:9px;color:var(--t3);font-weight:400}
+
+/* ═══════════════════════════════════════════════════════
+   CONTROLS + LOG
+═══════════════════════════════════════════════════════ */
+.ctrl-block{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:9px 11px;margin-bottom:8px}
+.ctrl-title{font-size:8px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.sl-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.sl-lbl{font-size:10px;color:var(--t3);min-width:75px;font-weight:500}
+.sl-val{font-size:10px;font-weight:700;min-width:44px;text-align:right;font-family:'Courier New',monospace;color:var(--t1)}
+input[type=range]{flex:1;-webkit-appearance:none;height:2px;background:var(--border);border-radius:1px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--blue);border:2px solid var(--bg0);cursor:pointer}
+.btn-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+
+.log-area{height:86px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.log-item{display:flex;align-items:center;gap:5px;padding:2px 7px;border-radius:2px;font-size:10px;font-family:'Courier New',monospace;animation:slin .12s ease}
+@keyframes slin{from{opacity:0}to{opacity:1}}
+.l-ok{background:rgba(58,158,95,.07);color:var(--green)}
+.l-err{background:var(--red-d);color:var(--red)}
+.l-info{background:var(--blue-d);color:var(--blue)}
+.l-warn{background:var(--amber-d);color:var(--amber)}
+
+/* ═══════════════════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════════════════ */
+.footer{display:flex;justify-content:space-between;align-items:center;padding:8px 20px;border-top:1px solid var(--border-sub);font-size:9px;color:var(--t3);letter-spacing:.04em;margin-top:4px;font-family:'Courier New',monospace}
+
+/* ═══════════════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════════════ */
+@media(max-width:1280px){
+  .r-main{grid-template-columns:240px minmax(0,1fr) 224px}
+  .hud{grid-template-columns:200px repeat(5,1fr)}
+}
+@media(max-width:1024px){
+  .r-main{grid-template-columns:1fr}
+  .r-4{grid-template-columns:1fr 1fr}
+  .hud{grid-template-columns:repeat(3,1fr)}
+  .hud-soc{grid-column:1/-1;flex-direction:row;justify-content:center;gap:20px;padding:12px 20px}
+}
+@media(max-width:640px){
+  .topbar{flex-wrap:wrap;padding:8px 12px;gap:8px}
+  .dm-group{order:3;width:100%;justify-content:center}
+  .hud{grid-template-columns:1fr 1fr}
+  .r-4,.r-2{grid-template-columns:1fr}
+  .main{padding:10px 12px}
+  .comm-strip{display:none}
+}
+
+/* ═══════════════════════════════════════════════════════
+   IDENTITY BAR
+═══════════════════════════════════════════════════════ */
+.identity-bar{display:flex;align-items:center;justify-content:space-between;padding:7px 22px;background:#0F1520;border-bottom:1px solid var(--border-sub);gap:20px}
+.id-college{font-size:10px;font-weight:800;letter-spacing:.09em;color:var(--t1);text-transform:uppercase;flex-shrink:0;white-space:nowrap}
+.id-center{text-align:center;flex:1;min-width:0}
+.id-project-name{font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-size:18px;font-weight:700;color:var(--t1);letter-spacing:.04em;line-height:1.2}
+.id-project-sub{font-size:8px;color:var(--t3);letter-spacing:.2em;text-transform:uppercase;margin-top:2px}
+.id-right{font-size:8px;color:var(--t3);font-family:'Courier New',monospace;text-align:right;flex-shrink:0;line-height:1.7;white-space:nowrap}
+
+/* ═══════════════════════════════════════════════════════
+   VEHICLE DIAGRAM CARD
+═══════════════════════════════════════════════════════ */
+.veh-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;display:flex;gap:0;margin-bottom:10px;align-items:stretch;min-height:168px}
+.veh-car-panel{flex:0 0 58%;position:relative;padding-right:14px}
+.veh-pack-panel{flex:1;border-left:1px solid var(--border-sub);padding-left:14px;display:flex;flex-direction:column}
+.veh-section-lbl{font-size:7px;font-weight:700;color:var(--t3);letter-spacing:.13em;text-transform:uppercase;margin-bottom:6px;font-family:'Courier New',monospace}
+@media(max-width:900px){.veh-card{flex-direction:column}.veh-pack-panel{border-left:none;border-top:1px solid var(--border-sub);padding-left:0;padding-top:10px;margin-top:8px}.veh-car-panel{padding-right:0}}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ BOOT SCREEN ═══════════════════════ -->
+<div id="boot">
+  <div class="boot-panel">
+    <div class="boot-pre">Battery Management System · EV Platform</div>
+    <div class="boot-title">MiniBMS</div>
+    <div class="boot-sub">v2.0 · Battery Control Unit · 3S Li-Ion · Model-Based Design</div>
+    <div id="boot-lines"></div>
+    <div class="boot-prog-wrap"><div class="boot-prog-fill" id="boot-prog"></div></div>
+    <div style="margin-top:10px;font-family:'Courier New',monospace;font-size:11px;color:var(--t3)" id="boot-status">
+      <span class="boot-cursor"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ DASHBOARD ═══════════════════════ -->
+<div id="dashboard">
+
+  <!-- ═══ TOPBAR ═══ -->
+  <nav class="topbar">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="19" height="19" viewBox="0 0 20 20" fill="none">
+          <rect x="1" y="5.5" width="13" height="9" rx="2.5" stroke="#1A7EC8" stroke-width="1.4"/>
+          <rect x="14" y="8" width="4" height="4" rx="1.2" fill="#1A7EC8" opacity=".8"/>
+          <line x1="4.5" y1="10" x2="11" y2="10" stroke="#1A7EC8" stroke-width="1.4" stroke-linecap="round"/>
+          <line x1="7.75" y1="7.5" x2="7.75" y2="12.5" stroke="#1A7EC8" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">Mini<em>BMS</em> <span style="color:var(--t2);font-size:11px;font-weight:400">EV</span></div>
+        <div class="brand-sub">3S Li-Ion · Battery Control Unit · Model-Based Design</div>
+      </div>
+    </div>
+
+    <div class="dm-group">
+      <button class="dm-btn dm-eco" id="dm-eco" onclick="setDriveMode('eco')">ECO</button>
+      <button class="dm-btn dm-normal on" id="dm-normal" onclick="setDriveMode('normal')">NORMAL</button>
+      <button class="dm-btn dm-sport" id="dm-sport" onclick="setDriveMode('sport')">SPORT</button>
+    </div>
+
+    <div class="comm-strip">
+      <div class="comm-badge on-c" id="can-badge"><div class="comm-dot" id="can-dot"></div>CAN</div>
+      <div class="comm-badge on-c" id="uart-badge"><div class="comm-dot" id="uart-dot"></div>UART</div>
+      <div class="comm-badge" id="motor-badge">&#9679; MOTOR</div>
+      <div class="comm-badge" id="chg-badge">&#9889; CHARGER</div>
+    </div>
+
+    <div class="topbar-right">
+      <span class="clock" id="clock">00:00:00</span>
+      <div class="conn-badge conn-demo" id="conn-badge" onclick="toggleDemo()">
+        <div class="pulse-dot" id="conn-dot" style="background:var(--blue)"></div>
+        <span id="conn-txt">Demo Mode</span>
+      </div>
+      <div class="state-pill pill-idle" id="state-pill">IDLE</div>
+    </div>
+  </nav>
+
+  <!-- ═══ IDENTITY BAR ═══ -->
+  <div class="identity-bar">
+    <div class="id-college">KLE Institute of Technology</div>
+    <div class="id-center">
+      <div class="id-project-name">VisionAstraa</div>
+      <div class="id-project-sub">EV Battery Management Platform &nbsp;·&nbsp; Model-Based Design &nbsp;·&nbsp; 3S Li-Ion</div>
+    </div>
+    <div class="id-right">MiniBMS v2.0 · Final Review Build<br>Dept. of Electronics &amp; Communication</div>
+  </div>
+
+  <!-- ═══ MAIN ═══ -->
+  <div class="main">
+
+    <!-- URL bar -->
+    <div class="url-bar">
+      <span class="url-label">API Server</span>
+      <input class="url-input" id="url-inp" placeholder="https://xxxx.ngrok-free.app  (leave blank for demo mode)">
+      <button class="btn btn-c" onclick="connectServer()">Connect</button>
+      <button class="btn btn-g" onclick="resetToDemo()">Demo</button>
+      <button class="btn btn-g" onclick="exportReport()">&#8595; CSV</button>
+    </div>
+
+    <!-- VEHICLE + PACK DIAGRAM -->
+    <div class="veh-card">
+
+      <!-- ── Left: Car side-profile ── -->
+      <div class="veh-car-panel">
+        <div class="veh-section-lbl">Vehicle System Overview — Service Schematic</div>
+        <svg id="car-svg" viewBox="0 0 556 152" width="100%" height="138" xmlns="http://www.w3.org/2000/svg">
+          <g stroke="#3A4E62" fill="none" stroke-linejoin="round" stroke-linecap="round">
+            <!-- Underbody -->
+            <path d="M68,118 L452,118" stroke-width="1.2"/>
+            <!-- Main body -->
+            <path d="M68,118 L68,92 C78,78 96,66 114,60 L174,43 C196,36 228,30 256,28 L306,27 C344,27 386,28 410,32 C430,38 442,54 446,70 L452,92 L452,118" stroke-width="1.6"/>
+            <!-- Roof -->
+            <path d="M174,43 C184,35 196,24 216,18 L278,14 C316,13 356,14 380,18 C396,22 410,32 410,32" stroke-width="1.3"/>
+            <!-- Windshield -->
+            <path d="M174,43 L184,24 L216,18 L216,43 Z" stroke-width="1" opacity=".72"/>
+            <!-- Front door window -->
+            <path d="M220,18 L278,15 L278,43 L220,43 Z" stroke-width="1" opacity=".72"/>
+            <!-- Rear door window -->
+            <path d="M282,15 L378,18 L410,32 L282,43 Z" stroke-width="1" opacity=".72"/>
+            <!-- Pillars / door lines -->
+            <line x1="278" y1="15" x2="276" y2="118" stroke-width=".7" opacity=".42"/>
+            <line x1="220" y1="18" x2="218" y2="118" stroke-width=".7" opacity=".38"/>
+            <!-- Battery floor pack -->
+            <rect id="car-pack-rect" x="172" y="107" width="207" height="12" rx="2" stroke-width="1.3" stroke-dasharray="6,4" fill="rgba(58,158,95,.08)"/>
+            <!-- Wheel arches -->
+            <path d="M452,118 C437,106 412,97 386,97 C360,97 342,106 354,118" stroke-width="1.3"/>
+            <path d="M68,118 C82,106 108,97 134,97 C160,97 176,106 168,118" stroke-width="1.3"/>
+            <!-- Rear wheel -->
+            <circle cx="386" cy="127" r="23" stroke-width="1.4"/>
+            <circle cx="386" cy="127" r="10" stroke-width="1"/>
+            <line x1="386" y1="104" x2="386" y2="150" stroke-width=".6" opacity=".45"/>
+            <line x1="363" y1="127" x2="409" y2="127" stroke-width=".6" opacity=".45"/>
+            <!-- Front wheel -->
+            <circle cx="134" cy="127" r="23" stroke-width="1.4"/>
+            <circle cx="134" cy="127" r="10" stroke-width="1"/>
+            <line x1="134" y1="104" x2="134" y2="150" stroke-width=".6" opacity=".45"/>
+            <line x1="111" y1="127" x2="157" y2="127" stroke-width=".6" opacity=".45"/>
+            <!-- Headlight -->
+            <path d="M68,94 C72,88 80,88 84,92" stroke-width="1.2"/>
+            <path d="M68,102 C72,108 80,108 84,104" stroke-width=".8" opacity=".55"/>
+            <!-- Rear light -->
+            <path d="M452,94 C447,89 442,91 440,96" stroke-width="1.2"/>
+            <path d="M452,104 C447,109 442,107 440,102" stroke-width=".8" opacity=".55"/>
+            <!-- Charge port -->
+            <rect x="445" y="72" width="9" height="13" rx="2" stroke-width="1" opacity=".8"/>
+            <circle cx="449" cy="78" r="2.5" stroke-width=".7" opacity=".65"/>
+            <!-- Motor block (rear axle) -->
+            <rect id="car-motor-rect" x="408" y="93" width="30" height="17" rx="3" stroke="#1A7EC8" stroke-width="1" fill="rgba(26,126,200,.07)"/>
+          </g>
+
+          <!-- ── Callout: Battery Pack ── -->
+          <circle cx="275" cy="107" r="2.5" fill="#4D6070"/>
+          <line x1="275" y1="104" x2="275" y2="84" stroke="#2E3D50" stroke-width=".8" stroke-dasharray="3,3"/>
+          <line x1="275" y1="84" x2="212" y2="64" stroke="#2E3D50" stroke-width=".8" stroke-dasharray="3,3"/>
+          <text x="118" y="59" fill="#8B949E" font-size="8" font-family="'Courier New',monospace" font-weight="700" letter-spacing=".8">BATTERY PACK</text>
+          <text id="car-bat-lbl" x="118" y="68" fill="#4D6070" font-size="7" font-family="'Courier New',monospace">72.0% · 4.30Ah · 47.7Wh</text>
+
+          <!-- ── Callout: Drive Motor ── -->
+          <circle cx="423" cy="93" r="2.5" fill="#4D6070"/>
+          <line x1="423" y1="90" x2="423" y2="68" stroke="#2E3D50" stroke-width=".8" stroke-dasharray="3,3"/>
+          <line x1="423" y1="68" x2="464" y2="50" stroke="#2E3D50" stroke-width=".8" stroke-dasharray="3,3"/>
+          <text x="466" y="46" fill="#8B949E" font-size="8" font-family="'Courier New',monospace" font-weight="700" letter-spacing=".8">DRIVE MOTOR</text>
+          <text id="car-mot-lbl" x="466" y="55" fill="#4D6070" font-size="7" font-family="'Courier New',monospace">IDLE · 0.0W</text>
+
+          <!-- ── Callout: BMS ECU ── -->
+          <circle cx="198" cy="58" r="2.5" fill="#4D6070"/>
+          <line x1="198" y1="55" x2="198" y2="36" stroke="#2E3D50" stroke-width=".8" stroke-dasharray="3,3"/>
+          <line x1="198" y1="36" x2="148" y2="20" stroke="#2E3D50" stroke-width=".8" stroke-dasharray="3,3"/>
+          <text x="16" y="16" fill="#8B949E" font-size="8" font-family="'Courier New',monospace" font-weight="700" letter-spacing=".8">BMS ECU</text>
+          <text id="car-bms-lbl" x="16" y="25" fill="#4D6070" font-size="7" font-family="'Courier New',monospace">IDLE · 4 guards armed</text>
+
+          <!-- ── Callout: Contactor K1 ── -->
+          <circle id="car-k1-dot" cx="316" cy="111" r="3.5" fill="none" stroke="#C84040" stroke-width="1.2"/>
+          <line x1="316" y1="107" x2="316" y2="88" stroke="#2E3D50" stroke-width=".8" stroke-dasharray="3,3"/>
+          <line x1="316" y1="88" x2="360" y2="72" stroke="#2E3D50" stroke-width=".8" stroke-dasharray="3,3"/>
+          <text x="362" y="68" fill="#8B949E" font-size="8" font-family="'Courier New',monospace" font-weight="700" letter-spacing=".8">CONTACTOR K1</text>
+          <text id="car-k1-lbl" x="362" y="77" fill="#4D6070" font-size="7" font-family="'Courier New',monospace">OPEN</text>
+        </svg>
+      </div>
+
+      <!-- ── Right: Battery pack top-down ── -->
+      <div class="veh-pack-panel">
+        <div class="veh-section-lbl">Battery Pack — Top Section View &nbsp;(3S · 18650 · 4.3Ah)</div>
+        <svg id="pack-svg" viewBox="0 0 264 148" width="100%" height="132" xmlns="http://www.w3.org/2000/svg">
+          <!-- Pack housing -->
+          <rect x="6" y="6" width="252" height="136" rx="7" fill="#161B22" stroke="#2E3D50" stroke-width="1.5"/>
+          <!-- Thermal pad outline -->
+          <rect x="12" y="12" width="240" height="124" rx="5" fill="none" stroke="#1E2C3C" stroke-width="1" stroke-dasharray="4,3"/>
+          <!-- Positive terminal -->
+          <rect x="226" y="1" width="22" height="10" rx="2.5" fill="#C84040" opacity=".65"/>
+          <text x="237" y="8.5" text-anchor="middle" fill="#fff" font-size="7.5" font-family="monospace" font-weight="700">+</text>
+          <!-- Negative terminal -->
+          <rect x="16" y="1" width="22" height="10" rx="2.5" fill="#4D6070" opacity=".7"/>
+          <text x="27" y="8.5" text-anchor="middle" fill="#fff" font-size="7.5" font-family="monospace" font-weight="700">−</text>
+
+          <!-- Cell 1 -->
+          <circle cx="64" cy="68" r="36" fill="#1C2230" stroke="#2E3D50" stroke-width="1"/>
+          <circle id="pack-cell-0" cx="64" cy="68" r="28" fill="rgba(58,158,95,.15)" stroke="#3A9E5F" stroke-width="1.8"/>
+          <circle cx="64" cy="68" r="9" fill="none" stroke="#2E3D50" stroke-width=".8"/>
+          <text x="64" y="66" text-anchor="middle" fill="#C9D1D9" font-size="8.5" font-family="'Courier New',monospace" font-weight="700" id="pack-cv-0">—V</text>
+          <text x="64" y="75" text-anchor="middle" fill="#4D6070" font-size="6.5" font-family="monospace">C1</text>
+          <text x="64" y="114" text-anchor="middle" fill="#4D6070" font-size="7" font-family="'Courier New',monospace" letter-spacing=".4">CELL 1</text>
+
+          <!-- Cell 2 -->
+          <circle cx="132" cy="68" r="36" fill="#1C2230" stroke="#2E3D50" stroke-width="1"/>
+          <circle id="pack-cell-1" cx="132" cy="68" r="28" fill="rgba(58,158,95,.15)" stroke="#3A9E5F" stroke-width="1.8"/>
+          <circle cx="132" cy="68" r="9" fill="none" stroke="#2E3D50" stroke-width=".8"/>
+          <text x="132" y="66" text-anchor="middle" fill="#C9D1D9" font-size="8.5" font-family="'Courier New',monospace" font-weight="700" id="pack-cv-1">—V</text>
+          <text x="132" y="75" text-anchor="middle" fill="#4D6070" font-size="6.5" font-family="monospace">C2</text>
+          <text x="132" y="114" text-anchor="middle" fill="#4D6070" font-size="7" font-family="'Courier New',monospace" letter-spacing=".4">CELL 2</text>
+
+          <!-- Cell 3 -->
+          <circle cx="200" cy="68" r="36" fill="#1C2230" stroke="#2E3D50" stroke-width="1"/>
+          <circle id="pack-cell-2" cx="200" cy="68" r="28" fill="rgba(58,158,95,.15)" stroke="#3A9E5F" stroke-width="1.8"/>
+          <circle cx="200" cy="68" r="9" fill="none" stroke="#2E3D50" stroke-width=".8"/>
+          <text x="200" y="66" text-anchor="middle" fill="#C9D1D9" font-size="8.5" font-family="'Courier New',monospace" font-weight="700" id="pack-cv-2">—V</text>
+          <text x="200" y="75" text-anchor="middle" fill="#4D6070" font-size="6.5" font-family="monospace">C3</text>
+          <text x="200" y="114" text-anchor="middle" fill="#4D6070" font-size="7" font-family="'Courier New',monospace" letter-spacing=".4">CELL 3</text>
+
+          <!-- Series balance connections -->
+          <line x1="92" y1="62" x2="104" y2="62" stroke="#2E3D50" stroke-width="1.5"/>
+          <line x1="160" y1="62" x2="172" y2="62" stroke="#2E3D50" stroke-width="1.5"/>
+          <line x1="92" y1="74" x2="104" y2="74" stroke="#2E3D50" stroke-width=".8" stroke-dasharray="2,2" opacity=".6"/>
+          <line x1="160" y1="74" x2="172" y2="74" stroke="#2E3D50" stroke-width=".8" stroke-dasharray="2,2" opacity=".6"/>
+
+          <!-- BMS PCB strip -->
+          <rect x="18" y="122" width="228" height="12" rx="3" fill="#1C2230" stroke="#2E3D50" stroke-width="1"/>
+          <text x="132" y="130" text-anchor="middle" fill="#4D6070" font-size="6" font-family="'Courier New',monospace" letter-spacing=".8">BMS PCB · NTC THERMISTOR · BALANCE IC · MOSFET GATE DRV</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- HUD STRIP -->
+    <div class="hud">
+      <!-- SOC arc gauge -->
+      <div class="hud-soc">
+        <div class="hud-soc-lbl">State of Charge</div>
+        <canvas id="soc-arc" width="196" height="112"></canvas>
+        <div class="hud-soc-sub" id="k-soc-s">— Ah remaining</div>
+        <span id="k-soc" style="display:none"></span>
+        <div id="k-soc-bar" style="display:none"></div>
+      </div>
+      <!-- Pack V -->
+      <div class="hud-card" style="--hc:var(--green)">
+        <div class="hud-lbl">Pack Voltage</div>
+        <div class="hud-val" id="k-vp">—<span class="hud-unit">V</span></div>
+        <div class="hud-sub">3S Li-Ion series</div>
+        <div class="hud-bar"><div class="hud-fill" id="k-vp-bar"></div></div>
+      </div>
+      <!-- Current -->
+      <div class="hud-card" style="--hc:var(--amber)">
+        <div class="hud-lbl">Current</div>
+        <div class="hud-val" id="k-i">—<span class="hud-unit">A</span></div>
+        <div class="hud-sub" id="k-i-s">Idle</div>
+        <div class="hud-bar"><div class="hud-fill" id="k-i-bar"></div></div>
+      </div>
+      <!-- Power -->
+      <div class="hud-card" style="--hc:var(--blue)">
+        <div class="hud-lbl">Power</div>
+        <div class="hud-val" id="k-pw">—<span class="hud-unit">W</span></div>
+        <div class="hud-sub" id="k-pw-s">— C-rate</div>
+        <div class="hud-bar"><div class="hud-fill" id="k-pw-bar"></div></div>
+      </div>
+      <!-- Temperature -->
+      <div class="hud-card" style="--hc:var(--red)">
+        <div class="hud-lbl">Temperature</div>
+        <div class="hud-val" id="k-t">—<span class="hud-unit">°C</span></div>
+        <div class="hud-sub" id="k-t-s">—</div>
+        <div class="hud-bar"><div class="hud-fill" id="k-t-bar"></div></div>
+      </div>
+      <!-- SoH -->
+      <div class="hud-card" style="--hc:var(--green)">
+        <div class="hud-lbl">State of Health</div>
+        <div class="hud-val" id="k-soh">—<span class="hud-unit">%</span></div>
+        <div class="hud-sub" id="k-soh-s">— cycles</div>
+        <div class="hud-bar"><div class="hud-fill" id="k-soh-bar"></div></div>
+      </div>
+    </div>
+
+    <!-- ROW 1: Battery | Charts+Flow | State+Faults -->
+    <div class="row r-main">
+
+      <!-- Battery pack -->
+      <div class="card">
+        <div class="card-hd">Battery Pack <span class="card-hd-a" id="pack-dv">ΔV —mV</span></div>
+
+        <div class="cells-row">
+          <div class="cell" id="cell-0">
+            <div class="cell-cap"></div>
+            <div class="cell-body">
+              <div class="cell-fill" id="cf-0"></div>
+              <div class="cell-gloss"></div>
+              <div class="cell-info">
+                <div class="cell-volt" id="cv-0">—</div>
+                <div class="cell-tag">CELL 1</div>
+              </div>
+              <div class="cell-icon" id="ci-0" style="opacity:0">⚡</div>
+            </div>
+          </div>
+          <div class="cell" id="cell-1">
+            <div class="cell-cap"></div>
+            <div class="cell-body">
+              <div class="cell-fill" id="cf-1"></div>
+              <div class="cell-gloss"></div>
+              <div class="cell-info">
+                <div class="cell-volt" id="cv-1">—</div>
+                <div class="cell-tag">CELL 2</div>
+              </div>
+              <div class="cell-icon" id="ci-1" style="opacity:0">⚡</div>
+            </div>
+          </div>
+          <div class="cell" id="cell-2">
+            <div class="cell-cap"></div>
+            <div class="cell-body">
+              <div class="cell-fill" id="cf-2"></div>
+              <div class="cell-gloss"></div>
+              <div class="cell-info">
+                <div class="cell-volt" id="cv-2">—</div>
+                <div class="cell-tag">CELL 3</div>
+              </div>
+              <div class="cell-icon" id="ci-2" style="opacity:0">⚡</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Balancing arrows -->
+        <div class="bal-row">
+          <span style="font-size:9px;color:var(--t3)" id="bal-label">BALANCED</span>
+          <span class="bal-arr" id="bal-arr-0">⇄</span>
+          <span class="bal-arr" id="bal-arr-1">⇄</span>
+        </div>
+
+        <!-- Regen indicator -->
+        <div class="regen-row" id="regen-row">
+          <div class="regen-icon">&#8629;</div>
+          <div>
+            <div class="regen-label">Regen Braking</div>
+            <div class="regen-val" id="regen-val">0.0 W</div>
+          </div>
+          <div class="regen-bar-bg"><div class="regen-bar-fill" id="regen-bar"></div></div>
+        </div>
+
+        <!-- Contactor -->
+        <div class="contactor-row open" id="contactor-row">
+          <div class="contactor-dot" id="contactor-dot" style="background:var(--red)"></div>
+          <span id="contactor-lbl">Contactor: OPEN</span>
+        </div>
+      </div>
+
+      <!-- Live charts + energy flow -->
+      <div class="card">
+        <div class="card-hd">Live Telemetry <span style="font-size:9px;color:var(--t3)" id="tick-lbl">tick 0</span></div>
+        <div style="height:122px"><canvas id="chart-v"></canvas></div>
+        <div class="card-sep"></div>
+        <div style="height:94px"><canvas id="chart-i"></canvas></div>
+
+        <!-- Energy flow diagram -->
+        <div class="card-hd" style="margin-top:10px">Energy Flow</div>
+        <svg id="ef-svg" viewBox="0 0 460 76" style="width:100%;height:76px" xmlns="http://www.w3.org/2000/svg">
+          <!-- CHARGER node -->
+          <rect x="4" y="16" width="86" height="44" rx="4" fill="#1C2230" stroke="#2E3D50" stroke-width="1"/>
+          <text x="47" y="30" fill="#4D6070" font-size="7" text-anchor="middle" font-family="monospace" letter-spacing="1">CHARGER</text>
+          <text id="ef-chg-v" x="47" y="48" fill="#C9D1D9" font-size="13" text-anchor="middle" font-family="monospace" font-weight="700">—W</text>
+          <circle cx="80" cy="24" r="3" fill="#2E3D50"/>
+          <!-- BATTERY node -->
+          <rect x="175" y="8" width="110" height="60" rx="4" fill="#1C2230" stroke="rgba(26,126,200,.3)" stroke-width="1"/>
+          <text x="230" y="24" fill="#4D6070" font-size="7" text-anchor="middle" font-family="monospace" letter-spacing="1">BATTERY</text>
+          <text id="ef-bat-soc" x="230" y="46" fill="#1A7EC8" font-size="16" text-anchor="middle" font-family="monospace" font-weight="700">—%</text>
+          <text id="ef-bat-v" x="230" y="60" fill="#4D6070" font-size="9" text-anchor="middle" font-family="monospace">—V</text>
+          <!-- MOTOR/LOAD node -->
+          <rect x="370" y="16" width="86" height="44" rx="4" fill="#1C2230" stroke="#2E3D50" stroke-width="1"/>
+          <text x="413" y="30" fill="#4D6070" font-size="7" text-anchor="middle" font-family="monospace" letter-spacing="1">MOTOR</text>
+          <text id="ef-mot-v" x="413" y="48" fill="#C9D1D9" font-size="13" text-anchor="middle" font-family="monospace" font-weight="700">—W</text>
+          <!-- Path CHG→BAT -->
+          <path id="ef-p-chg-idle" d="M90,38 L175,38" fill="none" stroke="#2E3D50" stroke-width="1.5"/>
+          <path id="ef-p-chg" d="M90,38 L175,38" fill="none" stroke="#3A9E5F" stroke-width="2" stroke-dasharray="8,6" opacity="0"/>
+          <!-- Path BAT→MOT -->
+          <path id="ef-p-mot-idle" d="M285,38 L370,38" fill="none" stroke="#2E3D50" stroke-width="1.5"/>
+          <path id="ef-p-mot" d="M285,38 L370,38" fill="none" stroke="#1A7EC8" stroke-width="2" stroke-dasharray="8,6" opacity="0"/>
+          <!-- Path REGEN (MOT→BAT, separate path showing reverse) -->
+          <path id="ef-p-regen" d="M370,44 L285,44" fill="none" stroke="#3A9E5F" stroke-width="2" stroke-dasharray="8,6" opacity="0"/>
+          <!-- BMS chip above battery -->
+          <rect x="202" y="0" width="56" height="11" rx="2" fill="#1C2230" stroke="#2E3D50" stroke-width=".8"/>
+          <text x="230" y="8" fill="#4D6070" font-size="6" text-anchor="middle" font-family="monospace" letter-spacing=".5">BMS MCU</text>
+          <!-- Contactor symbol on path -->
+          <circle id="ef-contactor" cx="132" cy="38" r="5" fill="#1C2230" stroke="rgba(200,64,64,.5)" stroke-width="1"/>
+          <text id="ef-k-label" x="132" y="52" fill="#4D6070" font-size="7" text-anchor="middle">K1</text>
+        </svg>
+      </div>
+
+      <!-- State machine + faults -->
+      <div class="card">
+        <div class="card-hd">BMS State Machine</div>
+        <div class="sm-grid">
+          <div class="sm-node sn-idle on" id="sm-idle">IDLE</div>
+          <div class="sm-node sn-disc" id="sm-disc">DISCHARGE</div>
+          <div class="sm-node sn-chg" id="sm-chg">CHARGE</div>
+          <div class="sm-node sn-flt" id="sm-flt">FAULT</div>
+        </div>
+
+        <div class="card-hd">Protection Flags</div>
+        <div class="fault-row f-ok" id="f-ov">
+          <div class="f-dot" style="background:var(--green)"></div>
+          <span class="f-lbl">Overvoltage</span>
+          <span class="f-val" id="fv-ov">—V / 4.25V</span>
+        </div>
+        <div class="fault-row f-ok" id="f-uv">
+          <div class="f-dot" style="background:var(--green)"></div>
+          <span class="f-lbl">Undervoltage</span>
+          <span class="f-val" id="fv-uv">—V / 2.45V</span>
+        </div>
+        <div class="fault-row f-ok" id="f-ot">
+          <div class="f-dot" style="background:var(--green)"></div>
+          <span class="f-lbl">Overtemperature</span>
+          <span class="f-val" id="fv-ot">—°C / 45°C</span>
+        </div>
+        <div class="fault-row f-ok" id="f-oc">
+          <div class="f-dot" style="background:var(--green)"></div>
+          <span class="f-lbl">Overcurrent</span>
+          <span class="f-val" id="fv-oc">—A / 5.0A</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 2: Cell detail | OCV+IR | AI | Health -->
+    <div class="row r-4">
+
+      <!-- Cell detail -->
+      <div class="card">
+        <div class="card-hd">Cell Voltages <span class="card-hd-a" id="ir-lbl">IR —mΩ</span></div>
+        <div style="height:90px"><canvas id="chart-cells"></canvas></div>
+        <div class="card-sep"></div>
+        <div class="card-hd" style="margin-bottom:7px">Thermal Heatmap</div>
+        <div class="therm-grid" id="therm-grid">
+          <div class="therm-cell" id="therm-0"><div class="therm-val" id="tv-0">—</div><div class="therm-lbl">C1</div></div>
+          <div class="therm-cell" id="therm-1"><div class="therm-val" id="tv-1">—</div><div class="therm-lbl">C2</div></div>
+          <div class="therm-cell" id="therm-2"><div class="therm-val" id="tv-2">—</div><div class="therm-lbl">C3</div></div>
+        </div>
+        <div class="card-sep"></div>
+        <div class="card-hd" style="margin-bottom:6px">Temperature Trend</div>
+        <div style="height:58px"><canvas id="chart-t"></canvas></div>
+      </div>
+
+      <!-- OCV + IR -->
+      <div class="card">
+        <div class="card-hd">OCV–SoC Curve <span class="card-hd-a" id="ocv-lbl">OCV —V</span></div>
+        <div style="height:115px"><canvas id="chart-ocv"></canvas></div>
+        <div class="card-sep"></div>
+        <div class="card-hd" style="margin-bottom:6px">IR vs Temperature</div>
+        <div style="height:80px"><canvas id="chart-ir"></canvas></div>
+      </div>
+
+      <!-- AI Predictions -->
+      <div class="card">
+        <div class="card-hd">AI Predictions</div>
+
+        <div class="ai-metric">
+          <div class="ai-lbl">Remaining Useful Life<span class="ai-lbl-r">±5% est.</span></div>
+          <div class="ai-val" id="ai-rul">—</div>
+          <div class="ai-sub" id="ai-rul-sub">cycles remaining</div>
+          <div class="ai-bar"><div class="ai-bar-fill" id="ai-rul-bar" style="background:var(--green)"></div></div>
+        </div>
+
+        <div class="ai-metric">
+          <div class="ai-lbl">Degradation Rate</div>
+          <div class="ai-val" id="ai-degrad">—</div>
+          <div class="ai-sub">% per 100 cycles (Li-Ion model)</div>
+        </div>
+
+        <div class="anom-flag anom-ok" id="ai-anomaly">
+          <span>&#11044; NOMINAL — No anomalies detected</span>
+        </div>
+
+        <div class="card-hd" style="margin-top:4px">C-Rate Gauge</div>
+        <canvas id="crate-arc" width="220" height="78" style="width:100%;height:78px;display:block"></canvas>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--t3);margin-top:2px;padding:0 2px">
+          <span>0C</span><span id="crate-val" style="color:var(--blue);font-weight:700">—C</span><span>1.2C</span>
+        </div>
+      </div>
+
+      <!-- Health + Range -->
+      <div class="card">
+        <div class="card-hd">Battery Health</div>
+        <div style="margin-bottom:8px">
+          <span class="grade-letter" id="grade-letter" style="color:var(--green)">—</span>
+          <div class="grade-sub" id="grade-sub">Calculating...</div>
+        </div>
+        <div class="hb-row"><span class="hb-lbl">SoH</span><div class="hb-bg"><div class="hb-fill" id="hb-soh" style="background:var(--green)"></div></div><span class="hb-val" id="hbv-soh">—%</span></div>
+        <div class="hb-row"><span class="hb-lbl">Temp</span><div class="hb-bg"><div class="hb-fill" id="hb-t" style="background:var(--amber)"></div></div><span class="hb-val" id="hbv-t">—</span></div>
+        <div class="hb-row"><span class="hb-lbl">Bal.</span><div class="hb-bg"><div class="hb-fill" id="hb-bal" style="background:var(--blue)"></div></div><span class="hb-val" id="hbv-bal">—</span></div>
+        <div class="hb-row"><span class="hb-lbl">IR</span><div class="hb-bg"><div class="hb-fill" id="hb-ir" style="background:var(--blue)"></div></div><span class="hb-val" id="hbv-ir">—</span></div>
+
+        <div class="range-card">
+          <div>
+            <div class="range-km" id="range-km" style="color:var(--blue)">—</div>
+            <div class="range-unit">est. km range</div>
+            <div style="font-size:8px;color:var(--t3);margin-top:2px" id="range-sub">@ idle</div>
+          </div>
+          <div style="margin-left:auto;text-align:right">
+            <div class="range-tte-val" id="tte-val">—</div>
+            <div class="range-tte-lbl" id="tte-lbl">time to empty</div>
+          </div>
+        </div>
+
+        <div class="sess-grid">
+          <div class="sess-card"><div class="sess-lbl">Wh Left</div><div class="sess-val" id="wh-rem">—<span class="sess-unit">Wh</span></div></div>
+          <div class="sess-card"><div class="sess-lbl">Cycles</div><div class="sess-val" id="cyc-val">—</div></div>
+          <div class="sess-card"><div class="sess-lbl">IR</div><div class="sess-val" id="ir-val">—<span class="sess-unit">mΩ</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 3: Controls | Log -->
+    <div class="row r-2">
+      <div class="card">
+        <div class="card-hd">System Controls</div>
+        <div class="ctrl-block">
+          <div class="ctrl-title">Drive Parameters <span id="dm-limit-lbl" style="color:var(--amber);float:right">NORMAL · max 3.0A</span></div>
+          <div class="sl-row">
+            <span class="sl-lbl">Current (A)</span>
+            <input type="range" id="sl-i" min="-3" max="3" step="0.1" value="0" oninput="onSlider()">
+            <span class="sl-val" id="sl-i-v">0.0 A</span>
+          </div>
+          <div class="sl-row">
+            <span class="sl-lbl">Temperature</span>
+            <input type="range" id="sl-t" min="5" max="60" step="1" value="28" oninput="onSlider()">
+            <span class="sl-val" id="sl-t-v">28 °C</span>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-c" onclick="sendCmd({ignition:true})">&#9654; Drive</button>
+          <button class="btn btn-green" onclick="sendCmd({charger:true})">&#9889; Charge</button>
+          <button class="btn btn-g" onclick="sendCmd({ignition:false,charger:false})">&#9646; Stop</button>
+          <button class="btn btn-amber" onclick="sendCmd({fault_inject:true})">&#9888; Fault</button>
+          <button class="btn btn-red" onclick="sendCmd({reset:true})">&#8635; Reset</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">Event Log <span style="font-size:9px;color:var(--t3)" id="log-count"></span></div>
+        <div class="log-area" id="log-area">
+          <div class="log-item l-info"><span style="opacity:.4;font-size:9px">0000</span><span>MiniBMS EV v2 ready</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+
+  <div class="footer">
+    <span>MiniBMS EV v2 · 3S Li-Ion Battery Control Unit · OCV lookup · Coulomb counting · 4-fault protection</span>
+    <span style="color:var(--t3)">Model-Based Design · EV Application · College Review Build</span>
+  </div>
+
+</div><!-- /dashboard -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  BMS SIMULATOR (preserved from v1)
+// ═══════════════════════════════════════════════════════════════════
+const CAP_AH=4.3,NOMINAL_V=11.1,V_MIN=2.5,V_MAX=4.2;
+const FAULT_OV=4.25,FAULT_UV=2.45,FAULT_OT=45.0,FAULT_OC=5.0,DT=1.0;
+
+const OCV_SOC=[[0,2.50],[10,3.30],[20,3.56],[30,3.65],[40,3.72],
+               [50,3.78],[60,3.84],[70,3.90],[80,3.96],[90,4.05],[100,4.20]];
+const IR_TEMP=[[5,130],[15,110],[25,95],[35,82],[45,75],[55,72],[65,70]];
+
+function interp(tbl,x){
+  if(x<=tbl[0][0])return tbl[0][1];
+  if(x>=tbl[tbl.length-1][0])return tbl[tbl.length-1][1];
+  for(let i=1;i<tbl.length;i++){
+    if(x<=tbl[i][0]){const f=(x-tbl[i-1][0])/(tbl[i][0]-tbl[i-1][0]);return tbl[i-1][1]+(tbl[i][1]-tbl[i-1][1])*f}
+  }
+  return tbl[tbl.length-1][1];
+}
+const ocvFn=s=>interp(OCV_SOC,s);
+const irFn=t=>interp(IR_TEMP,t)/1000;
+
+const sim={
+  soc:72,state:'IDLE',tick:0,cyc:0,ign:false,chg:false,finj:false,nrst:false,icmd:0,tcmd:28,
+  hist:[],events:[],
+  _log(msg,lv='info'){this.events.unshift({tick:this.tick,time:+(this.tick*DT).toFixed(1),msg,level:lv});if(this.events.length>80)this.events.pop()},
+  step(){
+    this.tick++;
+    const i=this.icmd,tc=this.tcmd,r=irFn(tc),oc=ocvFn(this.soc);
+    const cells=[0,.008,-.006].map(d=>+(Math.max(V_MIN-.1,Math.min(V_MAX+.1,oc+d+(Math.random()-.5)*.012-i*r))).toFixed(4));
+    const pv=+(cells.reduce((a,b)=>a+b,0)).toFixed(4);
+    const vf=cells.some(v=>v>FAULT_OV||v<FAULT_UV)||this.finj;
+    const tf=tc>=FAULT_OT||this.finj;
+    const cf=Math.abs(i)>FAULT_OC;
+    const af=vf||tf||cf;
+    if(af&&(this.state==='DISCHARGE'||this.state==='CHARGE')){
+      const r2=[];if(vf)r2.push('voltage');if(tf)r2.push(`temp ${Math.round(tc)}°C`);if(cf)r2.push(`OC ${Math.abs(i).toFixed(1)}A`);
+      this._log(`FAULT: ${r2.join(', ')}`,'error');this.state='FAULT';this.nrst=true;
+    }
+    if(this.state==='IDLE'&&!this.nrst){
+      if(this.chg){this.state='CHARGE';this._log('→ CHARGE','ok');}
+      else if(this.ign&&!af){this.state='DISCHARGE';this._log('→ DISCHARGE','ok');}
+    }
+    if(this.state==='DISCHARGE'&&!this.ign)this.state='IDLE';
+    if(this.state==='CHARGE'&&!this.chg)this.state='IDLE';
+    const ai=(this.state==='IDLE'||this.state==='FAULT')?0:i;
+    const ps=this.soc;
+    if(this.state==='DISCHARGE')this.soc=Math.max(0,this.soc-(ai/CAP_AH)*100*(DT/3600));
+    else if(this.state==='CHARGE')this.soc=Math.min(100,this.soc+(Math.abs(ai)/CAP_AH)*100*(DT/3600));
+    if(ps>20&&this.soc<=20)this._log('SOC warning: below 20%','warning');
+    if(ps<100&&this.soc>=99.9&&this.state==='CHARGE'){this.cyc++;this._log(`Cycle #${this.cyc} complete`,'ok');}
+    const ah=+(this.soc*CAP_AH/100).toFixed(4);
+    const soh=+Math.max(80,96-this.tick*.0005).toFixed(2);
+    const tte=this.state==='DISCHARGE'&&ai>0?+(ah/ai*60).toFixed(1):this.state==='CHARGE'&&ai<0?+((CAP_AH-ah)/Math.abs(ai)*60).toFixed(1):null;
+    const snap={
+      tick:this.tick,timestamp:+(this.tick*DT).toFixed(2),bms_state:this.state,
+      contactor:this.state==='DISCHARGE'||this.state==='CHARGE',ignition:this.ign,charger:this.chg,
+      pack_voltage:pv,current_A:+ai.toFixed(3),power_W:+(Math.abs(pv*ai)).toFixed(2),
+      soc_pct:+this.soc.toFixed(3),ah_remaining:ah,wh_remaining:+(ah*NOMINAL_V).toFixed(3),
+      wh_total:+(CAP_AH*NOMINAL_V).toFixed(2),soh_pct:soh,cycles:this.cyc,
+      cell_voltages:cells,cell_dv_mv:+((Math.max(...cells)-Math.min(...cells))*1000).toFixed(2),
+      ocv_per_cell:+oc.toFixed(4),ir_mohm:+(r*1000).toFixed(2),temperature_C:+tc.toFixed(2),
+      fault_voltage:vf,fault_temp:tf,fault_overcurrent:cf,fault_contactor:this.state==='FAULT',
+      any_fault:af,tte_min:tte
+    };
+    this.hist.push(snap);if(this.hist.length>300)this.hist.shift();return snap;
+  },
+  ctrl(cmd){
+    if('current'in cmd)this.icmd=+cmd.current;
+    if('temperature'in cmd)this.tcmd=+cmd.temperature;
+    if('ignition'in cmd)this.ign=!!cmd.ignition;
+    if('charger'in cmd)this.chg=!!cmd.charger;
+    if('fault_inject'in cmd){this.finj=!!cmd.fault_inject;if(this.finj)this._log('Fault injected','error');}
+    if(cmd.reset){this.finj=false;this.nrst=false;this.ign=false;this.chg=false;this.state='IDLE';this._log('BMS reset — IDLE','ok');}
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  CHART SETUP
+// ═══════════════════════════════════════════════════════════════════
+const HIST=60;
+const chartBase={
+  responsive:true,maintainAspectRatio:false,animation:false,
+  plugins:{legend:{display:false},tooltip:{enabled:true,mode:'index',intersect:false,
+    backgroundColor:'rgba(22,27,34,.97)',borderColor:'rgba(46,61,80,.9)',borderWidth:1,
+    titleColor:'#8B949E',bodyColor:'#C9D1D9',padding:7}},
+  scales:{
+    x:{display:false},
+    y:{display:true,grid:{color:'rgba(30,44,60,.7)',drawBorder:false},
+       ticks:{color:'#4D6070',font:{size:8},maxTicksLimit:4},border:{display:false}}
+  }
+};
+
+function mkChart(id,datasets,yMin,yMax){
+  const o=JSON.parse(JSON.stringify(chartBase));
+  if(yMin!==undefined)o.scales.y.min=yMin;
+  if(yMax!==undefined)o.scales.y.max=yMax;
+  o.data={labels:Array(HIST).fill(''),datasets};
+  return new Chart(document.getElementById(id).getContext('2d'),{type:'line',...o});
+}
+
+const cV=mkChart('chart-v',[{label:'Pack V',data:Array(HIST).fill(null),borderColor:'#3A9E5F',borderWidth:1.5,fill:true,backgroundColor:'rgba(58,158,95,.06)',tension:.35,pointRadius:0}],7,13.5);
+const cI=mkChart('chart-i',[{label:'A',data:Array(HIST).fill(null),borderColor:'#C98A1A',borderWidth:1.5,fill:true,backgroundColor:'rgba(201,138,26,.06)',tension:.35,pointRadius:0}],-3.5,6);
+const cT=mkChart('chart-t',[{label:'°C',data:Array(HIST).fill(null),borderColor:'#C84040',borderWidth:1.5,fill:true,backgroundColor:'rgba(200,64,64,.06)',tension:.4,pointRadius:0}],0,60);
+
+const cCells=new Chart(document.getElementById('chart-cells').getContext('2d'),{
+  type:'bar',
+  data:{labels:['Cell 1','Cell 2','Cell 3'],datasets:[{data:[0,0,0],
+    backgroundColor:['rgba(26,126,200,.3)','rgba(58,158,95,.3)','rgba(26,126,200,.22)'],
+    borderColor:['#1A7EC8','#3A9E5F','#1A7EC8'],borderWidth:1.5,borderRadius:3}]},
+  options:{responsive:true,maintainAspectRatio:false,animation:false,
+    plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(22,27,34,.97)',titleColor:'#8B949E',bodyColor:'#C9D1D9',borderColor:'rgba(46,61,80,.9)',borderWidth:1,padding:6,callbacks:{label:c=>` ${c.raw.toFixed(4)} V`}}},
+    scales:{x:{ticks:{color:'#4D6070',font:{size:8}},grid:{display:false},border:{display:false}},
+            y:{min:2.4,max:4.3,ticks:{color:'#4D6070',font:{size:8},maxTicksLimit:4},grid:{color:'rgba(30,44,60,.7)'},border:{display:false}}}}
+});
+
+const ocvX=OCV_SOC.map(p=>p[0]),ocvY=OCV_SOC.map(p=>p[1]);
+const cOCV=new Chart(document.getElementById('chart-ocv').getContext('2d'),{
+  type:'line',
+  data:{labels:ocvX,datasets:[
+    {label:'OCV',data:ocvY,borderColor:'rgba(26,126,200,.65)',borderWidth:1.5,fill:false,tension:.4,pointRadius:0},
+    {label:'Op',data:Array(11).fill(null),borderColor:'transparent',backgroundColor:'#1A7EC8',pointRadius:6,pointHoverRadius:8,showLine:false}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,animation:{duration:200},
+    plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(22,27,34,.97)',titleColor:'#8B949E',bodyColor:'#C9D1D9',borderColor:'rgba(46,61,80,.9)',borderWidth:1,padding:6}},
+    scales:{
+      x:{title:{display:true,text:'SoC (%)',color:'#4D6070',font:{size:8}},ticks:{color:'#4D6070',font:{size:8}},grid:{color:'rgba(30,44,60,.6)'},border:{display:false}},
+      y:{title:{display:true,text:'OCV (V)',color:'#4D6070',font:{size:8}},ticks:{color:'#4D6070',font:{size:8},maxTicksLimit:4},grid:{color:'rgba(30,44,60,.6)'},border:{display:false}}
+    }}
+});
+
+const irX=IR_TEMP.map(p=>p[0]),irY=IR_TEMP.map(p=>p[1]);
+const cIR=new Chart(document.getElementById('chart-ir').getContext('2d'),{
+  type:'line',
+  data:{labels:irX,datasets:[
+    {label:'IR',data:irY,borderColor:'rgba(26,126,200,.55)',borderWidth:1.5,fill:true,backgroundColor:'rgba(26,126,200,.05)',tension:.4,pointRadius:0},
+    {label:'Op',data:Array(IR_TEMP.length).fill(null),borderColor:'transparent',backgroundColor:'#1A7EC8',pointRadius:6,showLine:false}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,animation:{duration:200},
+    plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(22,27,34,.97)',titleColor:'#8B949E',bodyColor:'#C9D1D9',borderColor:'rgba(46,61,80,.9)',borderWidth:1,padding:6}},
+    scales:{
+      x:{title:{display:true,text:'Temp (°C)',color:'#4D6070',font:{size:8}},ticks:{color:'#4D6070',font:{size:8}},grid:{color:'rgba(30,44,60,.6)'},border:{display:false}},
+      y:{title:{display:true,text:'IR (mΩ)',color:'#4D6070',font:{size:8}},ticks:{color:'#4D6070',font:{size:8},maxTicksLimit:4},grid:{color:'rgba(30,44,60,.6)'},border:{display:false}}
+    }}
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  SOC ARC GAUGE
+// ═══════════════════════════════════════════════════════════════════
+function drawSOCArc(soc){
+  const cv=document.getElementById('soc-arc');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  const cx=W/2,cy=H-6,r=H-18;
+  const s=Math.PI,e=2*Math.PI,filled=s+(soc/100)*(e-s);
+  // Track
+  ctx.beginPath();ctx.arc(cx,cy,r,s,e);
+  ctx.strokeStyle='#1C2230';ctx.lineWidth=13;ctx.lineCap='round';ctx.stroke();
+  // Fill gradient
+  const g=ctx.createLinearGradient(cx-r,cy,cx+r,cy);
+  g.addColorStop(0,'#C84040');g.addColorStop(.45,'#C98A1A');g.addColorStop(1,'#3A9E5F');
+  ctx.beginPath();ctx.arc(cx,cy,r,s,filled);
+  ctx.strokeStyle=g;ctx.lineWidth=13;ctx.lineCap='round';ctx.stroke();
+  // Tick marks
+  for(let d=0;d<=180;d+=15){
+    const a=Math.PI+(d/180)*Math.PI;
+    const major=d%45===0;
+    ctx.beginPath();
+    ctx.moveTo(cx+(r-7)*Math.cos(a),cy+(r-7)*Math.sin(a));
+    ctx.lineTo(cx+(r-(major?13:9))*Math.cos(a),cy+(r-(major?13:9))*Math.sin(a));
+    ctx.strokeStyle=major?'rgba(46,61,80,.9)':'rgba(30,44,60,.7)';
+    ctx.lineWidth=major?1.5:1;ctx.stroke();
+  }
+  // Center value
+  ctx.fillStyle='#C9D1D9';ctx.font='bold 20px "Courier New",monospace';
+  ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  ctx.fillText(soc.toFixed(1)+'%',cx,cy-6);
+  // Small sub label
+  ctx.fillStyle='#4D6070';ctx.font='9px -apple-system,sans-serif';
+  ctx.fillText('SOC',cx,cy+4);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  C-RATE ARC GAUGE
+// ═══════════════════════════════════════════════════════════════════
+function drawCRateArc(crate){
+  const cv=document.getElementById('crate-arc');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  const cx=W/2,cy=H,r=H-10;
+  const s=Math.PI,e=2*Math.PI;
+  const maxC=1.2;
+  const filled=s+Math.min(1,crate/maxC)*(e-s);
+  ctx.beginPath();ctx.arc(cx,cy,r,s,e);
+  ctx.strokeStyle='#1C2230';ctx.lineWidth=9;ctx.lineCap='round';ctx.stroke();
+  if(crate>0){
+    const color=crate<0.5?'#3A9E5F':crate<0.9?'#C98A1A':'#C84040';
+    ctx.beginPath();ctx.arc(cx,cy,r,s,filled);
+    ctx.strokeStyle=color;ctx.lineWidth=9;ctx.lineCap='round';ctx.stroke();
+  }
+  // ticks
+  for(let d=0;d<=180;d+=36){
+    const a=Math.PI+(d/180)*Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(cx+(r-4)*Math.cos(a),cy+(r-4)*Math.sin(a));
+    ctx.lineTo(cx+(r-10)*Math.cos(a),cy+(r-10)*Math.sin(a));
+    ctx.strokeStyle='rgba(46,61,80,.7)';ctx.lineWidth=1.2;ctx.stroke();
+  }
+  ctx.fillStyle='#C9D1D9';ctx.font='bold 15px "Courier New",monospace';
+  ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  ctx.fillText(crate.toFixed(2)+'C',cx,cy-8);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+//  DRIVE MODE
+// ═══════════════════════════════════════════════════════════════════
+let driveMode='normal';
+const dmLimits={eco:1.5,normal:3.0,sport:5.0};
+const dmLabels={eco:'ECO · max 1.5A',normal:'NORMAL · max 3.0A',sport:'SPORT · max 5.0A'};
+
+function setDriveMode(mode){
+  driveMode=mode;
+  ['eco','normal','sport'].forEach(m=>{
+    const btn=document.getElementById('dm-'+m);
+    btn.className=`dm-btn dm-${m}`+(m===mode?' on':'');
+  });
+  document.getElementById('dm-limit-lbl').textContent=dmLabels[mode];
+  const sl=document.getElementById('sl-i');
+  sl.max=dmLimits[mode];
+  if(+sl.value>dmLimits[mode]){sl.value=dmLimits[mode];onSlider();}
+  // visual accent on topbar for sport mode
+  document.querySelector('.topbar').style.borderBottomColor=
+    mode==='sport'?'rgba(200,64,64,.25)':mode==='eco'?'rgba(58,158,95,.2)':'var(--border)';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  API / DEMO
+// ═══════════════════════════════════════════════════════════════════
+let API_BASE='',demoMode=true,fetchTimer=null;
+
+function connectServer(){
+  const v=document.getElementById('url-inp').value.trim();
+  if(!v){resetToDemo();return;}
+  API_BASE=v.replace(/\/$/,'');demoMode=false;
+  clearInterval(fetchTimer);fetchTimer=setInterval(fetchLive,1000);
+  setConnBadge('connecting');
+}
+function resetToDemo(){
+  demoMode=true;API_BASE='';clearInterval(fetchTimer);
+  fetchTimer=setInterval(simTick,1000);setConnBadge('demo');
+}
+function toggleDemo(){if(!demoMode)resetToDemo();}
+function setConnBadge(s){
+  const b=document.getElementById('conn-badge'),d=document.getElementById('conn-dot'),t=document.getElementById('conn-txt');
+  b.className='conn-badge';
+  if(s==='live'){b.classList.add('conn-live');d.style.background='var(--green)';t.textContent='Live';}
+  else if(s==='demo'){b.classList.add('conn-demo');d.style.background='var(--blue)';t.textContent='Demo Mode';}
+  else if(s==='connecting'){b.classList.add('conn-demo');d.style.background='var(--amber)';t.textContent='Connecting…';}
+  else{b.classList.add('conn-err');d.style.background='var(--red)';t.textContent='Error';}
+}
+
+async function fetchLive(){
+  try{
+    const r=await fetch(API_BASE+'/api/live',{signal:AbortSignal.timeout(3000)});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    setConnBadge('live');applyData(await r.json());
+  }catch(e){setConnBadge('error');}
+}
+
+function simTick(){const snap=sim.step();applyData(snap);renderEvents();}
+
+// ═══════════════════════════════════════════════════════════════════
+//  COMM INDICATORS
+// ═══════════════════════════════════════════════════════════════════
+let canTick=0;
+function blinkComm(d){
+  canTick++;
+  // CAN blinks every tick
+  const canDot=document.getElementById('can-dot');
+  canDot.className='comm-dot blink';
+  setTimeout(()=>canDot.className='comm-dot',260);
+  // UART blinks every 2 ticks
+  if(canTick%2===0){
+    const uartDot=document.getElementById('uart-dot');
+    uartDot.className='comm-dot blink';
+    setTimeout(()=>uartDot.className='comm-dot',260);
+  }
+  // Motor active
+  const mb=document.getElementById('motor-badge');
+  mb.className='comm-badge'+(d.bms_state==='DISCHARGE'?' on-g':'');
+  // Charger active
+  const cb=document.getElementById('chg-badge');
+  cb.className='comm-badge'+(d.bms_state==='CHARGE'?' on-a':'');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  APPLY DATA
+// ═══════════════════════════════════════════════════════════════════
+function pushChart(chart,val){
+  const ds=chart.data.datasets[0];
+  ds.data.push(val);if(ds.data.length>HIST)ds.data.shift();
+  chart.data.labels.push('');if(chart.data.labels.length>HIST)chart.data.labels.shift();
+  chart.update('none');
+}
+
+function applyData(d){
+  blinkComm(d);
+
+  // SOC arc + hidden compat elements
+  drawSOCArc(d.soc_pct??0);
+  setText('k-soc',d.soc_pct?.toFixed(1)??'—');
+  setText('k-soc-s',`${d.ah_remaining??'—'} Ah remaining`);
+
+  // HUD values
+  setText('k-vp',d.pack_voltage?.toFixed(3)??'—');
+  setBar('k-vp-bar',((d.pack_voltage-7)/6.5)*100);
+
+  const iSign=(d.current_A??0)>0?'+':'';
+  setText('k-i',iSign+(d.current_A?.toFixed(2)??'—'));
+  setText('k-i-s',d.bms_state==='DISCHARGE'?'Discharging':d.bms_state==='CHARGE'?'Charging':'Idle');
+  setBar('k-i-bar',(Math.abs(d.current_A??0)/FAULT_OC)*100);
+
+  setText('k-pw',d.power_W?.toFixed(1)??'—');
+  const crate=+(Math.abs(d.current_A??0)/CAP_AH).toFixed(3);
+  setText('k-pw-s',`${crate.toFixed(2)} C-rate`);
+  setBar('k-pw-bar',(d.power_W??0)/60*100);
+
+  setText('k-t',d.temperature_C?.toFixed(1)??'—');
+  setText('k-t-s',(d.temperature_C??0)>=40?'⚠ WARNING':(d.temperature_C??0)>=35?'Elevated':'Normal');
+  setBar('k-t-bar',Math.min(((d.temperature_C??0)/FAULT_OT)*100,100));
+  const tHud=document.getElementById('k-t');
+  if(tHud){tHud.style.color=(d.temperature_C??0)>=40?'var(--red)':(d.temperature_C??0)>=35?'var(--amber)':'var(--t1)';}
+
+  setText('k-soh',d.soh_pct?.toFixed(1)??'—');
+  setText('k-soh-s',`${d.cycles??0} cycles`);
+  setBar('k-soh-bar',d.soh_pct);
+
+  // Pack header
+  setText('tick-lbl',`tick ${d.tick??0} · ${d.timestamp??0}s`);
+  setText('pack-dv',`ΔV ${(d.cell_dv_mv??0).toFixed(1)}mV`);
+
+  // C-rate gauge
+  drawCRateArc(crate);
+  setText('crate-val',crate.toFixed(2)+'C');
+
+  // 18650 cells
+  if(d.cell_voltages){
+    d.cell_voltages.forEach((v,i)=>{
+      const pct=((v-V_MIN)/(V_MAX-V_MIN))*100;
+      const color=v>FAULT_OV?'var(--red)':v<FAULT_UV?'var(--amber)':pct>60?'var(--green)':pct>30?'#1A7EC8':'var(--amber)';
+      const fill=document.getElementById(`cf-${i}`);
+      if(fill){fill.style.height=Math.max(5,pct)+'%';fill.style.background=color;fill.style.boxShadow='';}
+      setText(`cv-${i}`,v.toFixed(3)+'V');
+      // charge/discharge icon
+      const icon=document.getElementById(`ci-${i}`);
+      if(icon){icon.textContent=d.bms_state==='CHARGE'?'⚡':d.bms_state==='DISCHARGE'?'↓':'';
+        icon.style.opacity=d.bms_state!=='IDLE'&&d.bms_state!=='FAULT'?'1':'0';}
+      // thermal
+      const tc=d.temperature_C??28;
+      const ct=(tc+[0,1.5,-1][i]+(Math.random()-.5)*.3).toFixed(1);
+      const tr=+ct/FAULT_OT;
+      const [rc,gc,bc]=[Math.round(20+tr*235),Math.round(80-tr*50),Math.round(80-tr*60)];
+      const th=document.getElementById(`therm-${i}`);
+      const tv=document.getElementById(`tv-${i}`);
+      if(tv)tv.textContent=ct+'°C';
+      if(th){th.style.background=`rgba(${rc},${gc},${bc},.1)`;th.style.borderColor=`rgba(${rc},${gc},${bc},.25)`;
+        const tv2=th.querySelector('.therm-val');if(tv2)tv2.style.color=`rgb(${rc},${gc},${bc})`;}
+    });
+  }
+
+  // Cell balancing
+  const dv=d.cell_dv_mv??0;
+  const balOn=dv>5;
+  document.getElementById('bal-arr-0').className='bal-arr'+(balOn?' on':'');
+  document.getElementById('bal-arr-1').className='bal-arr'+(balOn?' on':'');
+  setText('bal-label',balOn?`BALANCING ΔV=${dv.toFixed(1)}mV`:'BALANCED');
+  document.getElementById('bal-label').style.color=balOn?'var(--amber)':'var(--t3)';
+
+  // Regen braking
+  const isRegen=d.bms_state==='DISCHARGE'&&(d.current_A??0)<0;
+  const regenRow=document.getElementById('regen-row');
+  const regenPow=isRegen?Math.abs((d.current_A??0)*d.pack_voltage):0;
+  regenRow.className='regen-row'+(isRegen?' on':'');
+  setText('regen-val',regenPow.toFixed(1)+' W');
+  setBar('regen-bar',(regenPow/60)*100);
+
+  // Energy flow SVG
+  const efMot=document.getElementById('ef-p-mot');
+  const efChg=document.getElementById('ef-p-chg');
+  const efRegen=document.getElementById('ef-p-regen');
+  const efMotI=document.getElementById('ef-p-mot-idle');
+  const efChgI=document.getElementById('ef-p-chg-idle');
+  efMot.style.opacity=d.bms_state==='DISCHARGE'&&!isRegen?'1':'0';
+  efMot.className=d.bms_state==='DISCHARGE'&&!isRegen?'ef-path-active-r':'';
+  efChg.style.opacity=d.bms_state==='CHARGE'?'1':'0';
+  efChg.className=d.bms_state==='CHARGE'?'ef-path-active-l':'';
+  efRegen.style.opacity=isRegen?'1':'0';
+  efRegen.className=isRegen?'ef-path-active-l':'';
+  efMotI.style.opacity=d.bms_state!=='DISCHARGE'||isRegen?'1':'0';
+  efChgI.style.opacity=d.bms_state!=='CHARGE'?'1':'0';
+  // contactor in EF diagram
+  const efK=document.getElementById('ef-contactor');
+  if(efK){efK.setAttribute('stroke',d.contactor?'rgba(58,158,95,.6)':'rgba(200,64,64,.45)');}
+  setText('ef-bat-soc',(d.soc_pct??0).toFixed(0)+'%');
+  setText('ef-bat-v',(d.pack_voltage??0).toFixed(2)+'V');
+  setText('ef-chg-v',d.bms_state==='CHARGE'?d.power_W?.toFixed(0)+'W':'—W');
+  setText('ef-mot-v',d.bms_state==='DISCHARGE'?d.power_W?.toFixed(0)+'W':'—W');
+
+  // State machine
+  ['idle','disc','chg','flt'].forEach(s=>{document.getElementById('sm-'+s)?.classList.remove('on');});
+  const smMap={IDLE:'idle',DISCHARGE:'disc',CHARGE:'chg',FAULT:'flt'};
+  document.getElementById('sm-'+(smMap[d.bms_state]||'idle'))?.classList.add('on');
+
+  // State pill
+  const pill=document.getElementById('state-pill');
+  pill.textContent=d.bms_state||'IDLE';
+  pill.className='state-pill '+({IDLE:'pill-idle',DISCHARGE:'pill-disc',CHARGE:'pill-chg',FAULT:'pill-flt'}[d.bms_state]||'pill-idle');
+
+  // Contactor row
+  const crow=document.getElementById('contactor-row');
+  crow.className='contactor-row '+(d.contactor?'closed':'open');
+  document.getElementById('contactor-dot').style.background=d.contactor?'var(--green)':'var(--red)';
+  setText('contactor-lbl',`Contactor: ${d.contactor?'CLOSED':'OPEN'}`);
+
+  // Faults
+  faultRow('f-ov',d.fault_voltage);faultRow('f-uv',d.fault_voltage);
+  faultRow('f-ot',d.fault_temp);faultRow('f-oc',d.fault_overcurrent);
+  if(d.cell_voltages){
+    setText('fv-ov',`${Math.max(...d.cell_voltages).toFixed(3)}V / 4.25V`);
+    setText('fv-uv',`${Math.min(...d.cell_voltages).toFixed(3)}V / 2.45V`);
+  }
+  setText('fv-ot',`${d.temperature_C?.toFixed(1)}°C / 45°C`);
+  setText('fv-oc',`${Math.abs(d.current_A??0).toFixed(2)}A / 5.0A`);
+
+  // Charts
+  pushChart(cV,d.pack_voltage);pushChart(cI,d.current_A);pushChart(cT,d.temperature_C);
+  if(d.cell_voltages){cCells.data.datasets[0].data=[...d.cell_voltages];cCells.update('none');}
+
+  // OCV operating point
+  const soc=d.soc_pct??0,ocv=d.ocv_per_cell??ocvFn(soc);
+  setText('ocv-lbl',`OCV ${ocv.toFixed(4)}V`);
+  const ocvOp=Array(OCV_SOC.length).fill(null);
+  ocvOp[ocvX.reduce((b,x,i)=>Math.abs(x-soc)<Math.abs(ocvX[b]-soc)?i:b,0)]=ocvY[ocvX.reduce((b,x,i)=>Math.abs(x-soc)<Math.abs(ocvX[b]-soc)?i:b,0)];
+  cOCV.data.datasets[1].data=ocvOp;cOCV.update('none');
+
+  // IR operating point
+  const temp=d.temperature_C??28;
+  setText('ir-lbl',`IR ${(d.ir_mohm??0).toFixed(1)}mΩ`);
+  const irOp=Array(IR_TEMP.length).fill(null);
+  irOp[irX.reduce((b,x,i)=>Math.abs(x-temp)<Math.abs(irX[b]-temp)?i:b,0)]=irY[irX.reduce((b,x,i)=>Math.abs(x-temp)<Math.abs(irX[b]-temp)?i:b,0)];
+  cIR.data.datasets[1].data=irOp;cIR.update('none');
+
+  // Health
+  const soh=d.soh_pct??96,tc2=d.temperature_C??28,ir2=d.ir_mohm??95;
+  const grade=soh>=95&&dv<15&&tc2<35&&ir2<100?'A':soh>=90&&dv<30&&tc2<40?'B':soh>=85?'C':soh>=80?'D':'F';
+  const gCol={A:'#3A9E5F',B:'#5BB878',C:'#C98A1A',D:'#C98A1A',F:'#C84040'}[grade];
+  const gEl=document.getElementById('grade-letter');if(gEl){gEl.textContent=grade;gEl.style.color=gCol;}
+  setText('grade-sub',{A:'Excellent',B:'Good',C:'Fair',D:'Degraded',F:'Critical'}[grade]||'');
+  setBar('hb-soh',soh);setText('hbv-soh',soh.toFixed(1)+'%');
+  setBar('hb-t',Math.max(0,100-(tc2/FAULT_OT)*100));setText('hbv-t',tc2.toFixed(0)+'°C');
+  setBar('hb-bal',Math.max(0,100-(dv/50)*100));setText('hbv-bal',dv.toFixed(1)+'mV');
+  setBar('hb-ir',Math.max(0,100-((ir2-70)/130)*100));setText('hbv-ir',ir2.toFixed(1)+'mΩ');
+
+  // AI predictions
+  const rul=Math.max(0,Math.round((soh-80)/0.04));
+  const maxRul=Math.round((96-80)/0.04); // baseline RUL
+  setText('ai-rul',rul.toLocaleString());
+  setText('ai-rul-sub','cycles remaining (80% EOL threshold)');
+  setBar('ai-rul-bar',(rul/maxRul)*100);
+  document.getElementById('ai-rul-bar').style.background=rul>300?'var(--green)':rul>100?'var(--amber)':'var(--red)'; // RUL health thresholds
+  const degradRate=+((100-soh)/Math.max(1,d.cycles)*100).toFixed(2);
+  setText('ai-degrad',degradRate.toFixed(2)+'%');
+  // Anomaly detection
+  const anomaly=dv>20?`CELL IMBALANCE ΔV=${dv.toFixed(0)}mV`:tc2>=40?`HIGH TEMP ${tc2.toFixed(1)}°C`:ir2>120?`IR ELEVATED ${ir2.toFixed(0)}mΩ`:null;
+  const anomEl=document.getElementById('ai-anomaly');
+  if(anomEl){anomEl.className='anom-flag '+(anomaly?'anom-warn':'anom-ok');anomEl.textContent=anomaly?`⚠ ${anomaly}`:'● NOMINAL — No anomalies detected';}
+
+  // Range & TTE
+  const whLeft=d.wh_remaining??0;
+  const kmEst=+(whLeft/8).toFixed(1);
+  const kmEl=document.getElementById('range-km');
+  if(kmEl){kmEl.textContent=kmEst;kmEl.style.color=kmEst>20?'var(--blue)':kmEst>10?'var(--amber)':'var(--red)';}
+  setText('range-sub',d.bms_state==='DISCHARGE'?`@ ${Math.abs(d.current_A??0).toFixed(1)}A draw`:'@ idle');
+  const tte=d.tte_min;
+  setText('tte-val',tte?`${Math.floor(tte)}m ${Math.round((tte%1)*60)}s`:'—');
+  setText('tte-lbl',d.bms_state==='CHARGE'?'time to full':'time to empty');
+  setText('wh-rem',(d.wh_remaining??0).toFixed(1));
+  setText('cyc-val',d.cycles??0);
+  setText('ir-val',(d.ir_mohm??0).toFixed(1));
+
+  // ── Vehicle & pack diagram ──────────────────────────────
+  const socPct=d.soc_pct??72;
+  const packRect=document.getElementById('car-pack-rect');
+  if(packRect){
+    const s=socPct>60?'#3A9E5F':socPct>30?'#C98A1A':'#C84040';
+    const f=socPct>60?'rgba(58,158,95,.1)':socPct>30?'rgba(201,138,26,.1)':'rgba(200,64,64,.1)';
+    packRect.setAttribute('stroke',s);packRect.setAttribute('fill',f);
+  }
+  setText('car-bat-lbl',`${socPct.toFixed(1)}% · ${(d.ah_remaining??0).toFixed(2)}Ah · ${(d.wh_remaining??0).toFixed(1)}Wh`);
+  setText('car-mot-lbl',`${d.bms_state} · ${(d.power_W??0).toFixed(1)}W`);
+  setText('car-bms-lbl',`${d.bms_state} · ${d.any_fault?'FAULT ACTIVE':'4 guards armed'}`);
+  const k1Dot=document.getElementById('car-k1-dot');
+  if(k1Dot)k1Dot.setAttribute('stroke',d.contactor?'#3A9E5F':'#C84040');
+  setText('car-k1-lbl',d.contactor?'CLOSED':'OPEN');
+  const motRect=document.getElementById('car-motor-rect');
+  if(motRect)motRect.setAttribute('fill',d.bms_state==='DISCHARGE'?'rgba(26,126,200,.2)':'rgba(26,126,200,.06)');
+  if(d.cell_voltages){
+    const cc=['#3A9E5F','#1A7EC8','#C98A1A','#C84040'];
+    const cf=['rgba(58,158,95,.16)','rgba(26,126,200,.16)','rgba(201,138,26,.14)','rgba(200,64,64,.14)'];
+    d.cell_voltages.forEach((v,i)=>{
+      const ci=v>FAULT_OV?3:v<FAULT_UV?2:v>3.8?0:1;
+      const el=document.getElementById(`pack-cell-${i}`);
+      const tv=document.getElementById(`pack-cv-${i}`);
+      if(tv)tv.textContent=v.toFixed(3)+'V';
+      if(el){el.setAttribute('stroke',cc[ci]);el.setAttribute('fill',cf[ci]);}
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════════
+function setText(id,val){const e=document.getElementById(id);if(e)e.textContent=val;}
+function setBar(id,pct){const e=document.getElementById(id);if(e)e.style.width=Math.max(0,Math.min(100,pct||0))+'%';}
+function faultRow(id,flag){
+  const e=document.getElementById(id);if(!e)return;
+  e.className='fault-row '+(flag?'f-err':'f-ok');
+  const dot=e.querySelector('.f-dot');if(dot)dot.style.background=flag?'var(--red)':'var(--green)';
+}
+function renderEvents(){
+  const area=document.getElementById('log-area');if(!area)return;
+  area.innerHTML='';
+  sim.events.slice(0,20).forEach(ev=>{
+    const d=document.createElement('div');
+    d.className=`log-item l-${{ok:'ok',error:'err',warning:'warn'}[ev.level]||'info'}`;
+    d.innerHTML=`<span style="opacity:.35;font-size:9px">${String(ev.tick).padStart(4,'0')}</span><span>${ev.msg}</span>`;
+    area.appendChild(d);
+  });
+  setText('log-count',`${sim.events.length} events`);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  CONTROLS
+// ═══════════════════════════════════════════════════════════════════
+function onSlider(){
+  const i=+document.getElementById('sl-i').value;
+  const t=+document.getElementById('sl-t').value;
+  setText('sl-i-v',(i>=0?'+':'')+i.toFixed(1)+' A');
+  setText('sl-t-v',t+' °C');
+  sendCmd({current:i,temperature:t});
+}
+async function sendCmd(cmd){
+  if(demoMode){
+    sim.ctrl(cmd);
+    if('ignition'in cmd||'charger'in cmd||'reset'in cmd||'fault_inject'in cmd){
+      applyData(sim.step());renderEvents();
+    }
+    return;
+  }
+  try{await fetch(API_BASE+'/api/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cmd),signal:AbortSignal.timeout(3000)});}
+  catch(e){console.warn('ctrl',e);}
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  CLOCK
+// ═══════════════════════════════════════════════════════════════════
+function tickClock(){
+  const n=new Date(),p=n=>String(n).padStart(2,'0');
+  setText('clock',`${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`);
+}
+setInterval(tickClock,1000);tickClock();
+
+// ═══════════════════════════════════════════════════════════════════
+//  EXPORT
+// ═══════════════════════════════════════════════════════════════════
+function exportReport(){
+  if(!demoMode&&API_BASE){window.open(API_BASE+'/api/export/csv');return;}
+  const rows=[['tick','timestamp','state','soc_pct','pack_voltage','current_A','power_W','temperature_C','soh_pct','cycles','cell1_V','cell2_V','cell3_V','cell_dv_mv','ir_mohm','any_fault']];
+  sim.hist.forEach(d=>rows.push([d.tick,d.timestamp,d.bms_state,d.soc_pct,d.pack_voltage,d.current_A,d.power_W,d.temperature_C,d.soh_pct,d.cycles,...(d.cell_voltages||[0,0,0]),d.cell_dv_mv,d.ir_mohm,d.any_fault?1:0]));
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(rows.map(r=>r.join(',')).join('\n'));
+  a.download=`minibms_ev_${Date.now()}.csv`;a.click();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  BOOT SEQUENCE
+// ═══════════════════════════════════════════════════════════════════
+const BOOT_LINES=[
+  ['Scanning cell voltage sensors (x3)...','PASS','ok'],
+  ['Loading OCV–SoC lookup table (11 pts)...','LOADED','ok'],
+  ['Calibrating internal resistance model...','OK','ok'],
+  ['Initializing CAN bus interface @ 500kbps...','READY','ok'],
+  ['UART telemetry port @ 115200 baud...','READY','ok'],
+  ['Thermal protection thresholds...','ARMED','ok'],
+  ['Overvoltage / Undervoltage guards...','ARMED','ok'],
+  ['Overcurrent protection @ 5.0A...','ARMED','ok'],
+  ['Coulomb counting engine...','ACTIVE','ok'],
+  ['State machine → IDLE','OK','ok'],
+];
+
+function startBoot(){
+  // Pre-seed chart data while boot plays
+  for(let i=0;i<30;i++){
+    const s=sim.step();
+    cV.data.datasets[0].data[i]=s.pack_voltage;
+    cI.data.datasets[0].data[i]=s.current_A;
+    cT.data.datasets[0].data[i]=s.temperature_C;
+  }
+  cV.update('none');cI.update('none');cT.update('none');
+
+  const container=document.getElementById('boot-lines');
+  const prog=document.getElementById('boot-prog');
+  let idx=0;
+  const delays=[0,220,400,580,740,880,1020,1160,1300,1430];
+
+  BOOT_LINES.forEach((line,i)=>{
+    setTimeout(()=>{
+      const el=document.createElement('div');
+      el.className='boot-line';
+      el.innerHTML=`<span class="bl-arrow">›</span><span class="bl-text">${line[0]}</span><span class="bl-${line[2]}">${line[1]}</span>`;
+      container.appendChild(el);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('show')));
+      prog.style.width=`${((i+1)/BOOT_LINES.length)*100}%`;
+    },delays[i]);
+  });
+
+  // Complete boot
+  setTimeout(()=>{
+    document.getElementById('boot-status').textContent='ALL SYSTEMS NOMINAL — STARTING DASHBOARD...';
+    setTimeout(()=>{
+      const boot=document.getElementById('boot');
+      const dash=document.getElementById('dashboard');
+      boot.classList.add('out');
+      dash.style.display='block';
+      requestAnimationFrame(()=>requestAnimationFrame(()=>dash.classList.add('show')));
+      setTimeout(()=>boot.style.display='none',900);
+      // Start live loop
+      fetchTimer=setInterval(simTick,1000);
+      simTick();
+    },500);
+  },1750);
+}
+
+startBoot();
+</script>
+</body>
+</html>
