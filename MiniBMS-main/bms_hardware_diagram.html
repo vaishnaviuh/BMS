@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MiniBMS — Hardware Block Diagram</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#020609;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#DCE8F4;min-height:100vh;padding:20px}
+h1{text-align:center;font-size:18px;font-weight:700;color:#00D4FF;letter-spacing:.08em;margin-bottom:4px}
+.subtitle{text-align:center;font-size:11px;color:#4E6E8E;letter-spacing:.06em;margin-bottom:20px}
+.diagram-wrap{max-width:1200px;margin:0 auto}
+svg text{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+
+/* Change-values section */
+.chg-section{max-width:1200px;margin:24px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chg-card{background:rgba(8,18,30,.9);border:1px solid rgba(0,212,255,.12);border-radius:12px;padding:18px 20px}
+.chg-title{font-size:11px;font-weight:800;color:#00D4FF;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid rgba(0,212,255,.08)}
+.chg-row{display:flex;align-items:baseline;gap:0;margin-bottom:10px;background:rgba(2,6,9,.6);border-radius:7px;overflow:hidden}
+.chg-file{font-size:9px;font-weight:700;padding:2px 8px;background:rgba(0,212,255,.1);color:#00D4FF;letter-spacing:.06em;text-transform:uppercase;flex-shrink:0}
+.chg-line{font-size:10px;color:#FFB300;font-weight:700;padding:2px 8px;background:rgba(255,179,0,.08);flex-shrink:0;border-right:1px solid rgba(255,255,255,.04)}
+.chg-code{font-family:'Courier New',monospace;font-size:11px;padding:6px 10px;color:#DCE8F4;flex:1}
+.chg-code span.ov{color:#FF3B3B}
+.chg-code span.ok{color:#00FF87}
+.chg-code span.am{color:#FFB300}
+.chg-arrow{font-size:10px;color:#4E6E8E;padding:0 4px}
+.chg-desc{font-size:9px;color:#4E6E8E;padding:4px 10px 6px;font-style:italic}
+.chg-group-label{font-size:9px;font-weight:700;color:#4E6E8E;text-transform:uppercase;letter-spacing:.1em;margin:12px 0 6px}
+.legend{display:flex;gap:20px;justify-content:center;margin-top:16px;flex-wrap:wrap}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:10px;color:#4E6E8E}
+.leg-dot{width:12px;height:12px;border-radius:3px}
+</style>
+</head>
+<body>
+
+<h1>MiniBMS · Real-World Hardware Block Diagram</h1>
+<div class="subtitle">3S Li-Ion EV Battery Management System · Complete System Architecture</div>
+
+<div class="diagram-wrap">
+<svg viewBox="0 0 1160 720" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block">
+<defs>
+  <!-- Glow filters -->
+  <filter id="gc"><feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <filter id="gg"><feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <filter id="gr"><feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <filter id="ga"><feGaussianBlur in="SourceGraphic" stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <!-- Arrow markers -->
+  <marker id="arr-c" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+    <path d="M1,1 L7,4 L1,7 Z" fill="#00D4FF"/>
+  </marker>
+  <marker id="arr-g" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+    <path d="M1,1 L7,4 L1,7 Z" fill="#00FF87"/>
+  </marker>
+  <marker id="arr-a" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+    <path d="M1,1 L7,4 L1,7 Z" fill="#FFB300"/>
+  </marker>
+  <marker id="arr-r" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+    <path d="M1,1 L7,4 L1,7 Z" fill="#FF3B3B"/>
+  </marker>
+  <marker id="arr-w" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+    <path d="M1,1 L7,4 L1,7 Z" fill="#4E6E8E"/>
+  </marker>
+</defs>
+
+<!-- ── BACKGROUND GRID ── -->
+<rect width="1160" height="720" fill="#030810" rx="14"/>
+<g stroke="rgba(0,212,255,.04)" stroke-width=".5">
+  <line x1="0" y1="120" x2="1160" y2="120"/>
+  <line x1="0" y1="240" x2="1160" y2="240"/>
+  <line x1="0" y1="360" x2="1160" y2="360"/>
+  <line x1="0" y1="480" x2="1160" y2="480"/>
+  <line x1="0" y1="600" x2="1160" y2="600"/>
+</g>
+
+<!-- ═══════════════════════════════════════════════
+     SECTION LABELS
+═══════════════════════════════════════════════ -->
+<text x="16" y="44" fill="rgba(0,212,255,.25)" font-size="9" font-weight="700" letter-spacing="2" text-transform="uppercase">POWER / HIGH VOLTAGE</text>
+<text x="16" y="284" fill="rgba(0,255,135,.25)" font-size="9" font-weight="700" letter-spacing="2">SENSING / MEASUREMENT</text>
+<text x="16" y="444" fill="rgba(255,179,0,.25)" font-size="9" font-weight="700" letter-spacing="2">PROCESSING / COMMUNICATION</text>
+<text x="16" y="604" fill="rgba(78,110,142,.25)" font-size="9" font-weight="700" letter-spacing="2">OUTPUT / HMI / MONITORING</text>
+
+<!-- separator lines -->
+<line x1="0" y1="260" x2="1160" y2="260" stroke="rgba(0,255,135,.06)" stroke-width="1" stroke-dasharray="4,8"/>
+<line x1="0" y1="420" x2="1160" y2="420" stroke="rgba(255,179,0,.06)" stroke-width="1" stroke-dasharray="4,8"/>
+<line x1="0" y1="580" x2="1160" y2="580" stroke="rgba(78,110,142,.06)" stroke-width="1" stroke-dasharray="4,8"/>
+
+<!-- ═══════════════════════════════════════════════
+     ROW 1 — POWER / HIGH VOLTAGE DOMAIN
+═══════════════════════════════════════════════ -->
+
+<!-- CELL 1 -->
+<rect x="30" y="60" width="72" height="160" rx="8" fill="rgba(255,59,59,.07)" stroke="#FF3B3B" stroke-width="1.2" filter="url(#gr)"/>
+<rect x="42" y="53" width="48" height="10" rx="3" fill="rgba(255,59,59,.3)" stroke="#FF3B3B" stroke-width=".8"/>
+<text x="66" y="108" fill="#FF3B3B" font-size="11" font-weight="700" text-anchor="middle">CELL</text>
+<text x="66" y="125" fill="#FF3B3B" font-size="20" font-weight="800" text-anchor="middle">1</text>
+<text x="66" y="145" fill="rgba(255,59,59,.6)" font-size="8" text-anchor="middle">3.7V nom</text>
+<text x="66" y="157" fill="rgba(255,59,59,.5)" font-size="8" text-anchor="middle">4.3Ah</text>
+<text x="66" y="170" fill="rgba(255,59,59,.4)" font-size="7" text-anchor="middle">18650/Pouch</text>
+<text x="66" y="205" fill="rgba(255,59,59,.5)" font-size="8" text-anchor="middle">3.2V–4.2V</text>
+
+<!-- CELL 2 -->
+<rect x="120" y="60" width="72" height="160" rx="8" fill="rgba(255,59,59,.07)" stroke="#FF3B3B" stroke-width="1.2" filter="url(#gr)"/>
+<rect x="132" y="53" width="48" height="10" rx="3" fill="rgba(255,59,59,.3)" stroke="#FF3B3B" stroke-width=".8"/>
+<text x="156" y="108" fill="#FF3B3B" font-size="11" font-weight="700" text-anchor="middle">CELL</text>
+<text x="156" y="125" fill="#FF3B3B" font-size="20" font-weight="800" text-anchor="middle">2</text>
+<text x="156" y="145" fill="rgba(255,59,59,.6)" font-size="8" text-anchor="middle">3.7V nom</text>
+<text x="156" y="157" fill="rgba(255,59,59,.5)" font-size="8" text-anchor="middle">4.3Ah</text>
+<text x="156" y="170" fill="rgba(255,59,59,.4)" font-size="7" text-anchor="middle">18650/Pouch</text>
+<text x="156" y="205" fill="rgba(255,59,59,.5)" font-size="8" text-anchor="middle">3.2V–4.2V</text>
+
+<!-- CELL 3 -->
+<rect x="210" y="60" width="72" height="160" rx="8" fill="rgba(255,59,59,.07)" stroke="#FF3B3B" stroke-width="1.2" filter="url(#gr)"/>
+<rect x="222" y="53" width="48" height="10" rx="3" fill="rgba(255,59,59,.3)" stroke="#FF3B3B" stroke-width=".8"/>
+<text x="246" y="108" fill="#FF3B3B" font-size="11" font-weight="700" text-anchor="middle">CELL</text>
+<text x="246" y="125" fill="#FF3B3B" font-size="20" font-weight="800" text-anchor="middle">3</text>
+<text x="246" y="145" fill="rgba(255,59,59,.6)" font-size="8" text-anchor="middle">3.7V nom</text>
+<text x="246" y="157" fill="rgba(255,59,59,.5)" font-size="8" text-anchor="middle">4.3Ah</text>
+<text x="246" y="170" fill="rgba(255,59,59,.4)" font-size="7" text-anchor="middle">18650/Pouch</text>
+<text x="246" y="205" fill="rgba(255,59,59,.5)" font-size="8" text-anchor="middle">3.2V–4.2V</text>
+
+<!-- 3S Series label -->
+<rect x="30" y="228" width="252" height="20" rx="5" fill="rgba(255,59,59,.08)" stroke="rgba(255,59,59,.2)" stroke-width=".8"/>
+<text x="156" y="242" fill="rgba(255,59,59,.7)" font-size="9" font-weight="700" text-anchor="middle" letter-spacing="1">3S SERIES → 11.1V PACK</text>
+
+<!-- Pre-charge resistor -->
+<rect x="320" y="60" width="100" height="60" rx="7" fill="rgba(255,179,0,.06)" stroke="#FFB300" stroke-width="1.2"/>
+<text x="370" y="83" fill="#FFB300" font-size="9" font-weight="700" text-anchor="middle">PRE-CHARGE</text>
+<text x="370" y="97" fill="#FFB300" font-size="9" font-weight="700" text-anchor="middle">RELAY + R</text>
+<text x="370" y="110" fill="rgba(255,179,0,.6)" font-size="8" text-anchor="middle">50Ω / 50W</text>
+<text x="370" y="122" fill="rgba(255,179,0,.5)" font-size="7" text-anchor="middle">Limits inrush</text>
+
+<!-- Main CONTACTOR -->
+<rect x="460" y="55" width="110" height="70" rx="7" fill="rgba(255,179,0,.06)" stroke="#FFB300" stroke-width="1.5"/>
+<text x="515" y="78" fill="#FFB300" font-size="9" font-weight="700" text-anchor="middle">MAIN</text>
+<text x="515" y="92" fill="#FFB300" font-size="9" font-weight="700" text-anchor="middle">CONTACTOR</text>
+<text x="515" y="107" fill="rgba(255,179,0,.7)" font-size="8" text-anchor="middle">K1 — EV200 /</text>
+<text x="515" y="118" fill="rgba(255,179,0,.6)" font-size="8" text-anchor="middle">Gigavac GX14</text>
+<text x="515" y="130" fill="rgba(255,179,0,.4)" font-size="7" text-anchor="middle">12V coil · 200–500A</text>
+
+<!-- FUSE -->
+<rect x="460" y="148" width="110" height="52" rx="7" fill="rgba(255,59,59,.06)" stroke="rgba(255,59,59,.4)" stroke-width="1"/>
+<text x="515" y="170" fill="rgba(255,59,59,.8)" font-size="9" font-weight="700" text-anchor="middle">FUSE / PYRO</text>
+<text x="515" y="184" fill="rgba(255,59,59,.6)" font-size="8" text-anchor="middle">200A · Hardware OCP</text>
+<text x="515" y="195" fill="rgba(255,59,59,.45)" font-size="7" text-anchor="middle">backup to SW protection</text>
+
+<!-- Balance MOSFETs -->
+<rect x="320" y="148" width="100" height="52" rx="7" fill="rgba(0,212,255,.05)" stroke="rgba(0,212,255,.3)" stroke-width="1"/>
+<text x="370" y="169" fill="rgba(0,212,255,.8)" font-size="9" font-weight="700" text-anchor="middle">BALANCE</text>
+<text x="370" y="183" fill="rgba(0,212,255,.7)" font-size="9" font-weight="700" text-anchor="middle">MOSFETs</text>
+<text x="370" y="196" fill="rgba(0,212,255,.45)" font-size="7" text-anchor="middle">IRF1324 / SiC</text>
+
+<!-- Motor / Load -->
+<rect x="620" y="60" width="110" height="80" rx="8" fill="rgba(0,212,255,.06)" stroke="#00D4FF" stroke-width="1.5"/>
+<text x="675" y="88" fill="#00D4FF" font-size="10" font-weight="700" text-anchor="middle">MOTOR /</text>
+<text x="675" y="103" fill="#00D4FF" font-size="10" font-weight="700" text-anchor="middle">LOAD</text>
+<text x="675" y="118" fill="rgba(0,212,255,.6)" font-size="8" text-anchor="middle">Motor Controller</text>
+<text x="675" y="130" fill="rgba(0,212,255,.5)" font-size="7" text-anchor="middle">BLDC / PMSM</text>
+
+<!-- Charger -->
+<rect x="620" y="155" width="110" height="52" rx="7" fill="rgba(0,255,135,.05)" stroke="rgba(0,255,135,.35)" stroke-width="1.2"/>
+<text x="675" y="177" fill="rgba(0,255,135,.9)" font-size="9" font-weight="700" text-anchor="middle">CHARGER</text>
+<text x="675" y="191" fill="rgba(0,255,135,.6)" font-size="8" text-anchor="middle">AC/DC · CC/CV</text>
+<text x="675" y="202" fill="rgba(0,255,135,.45)" font-size="7" text-anchor="middle">SAE J1772 / Type-2</text>
+
+<!-- ═══════════════════════════════════════════════
+     ROW 2 — SENSING / MEASUREMENT
+═══════════════════════════════════════════════ -->
+
+<!-- BQ76940 cell monitor -->
+<rect x="30" y="275" width="160" height="80" rx="8" fill="rgba(0,255,135,.06)" stroke="#00FF87" stroke-width="1.4" filter="url(#gg)"/>
+<text x="40" y="291" fill="rgba(0,255,135,.45)" font-size="7" font-weight="700">CELL VOLTAGE MONITOR IC</text>
+<text x="110" y="312" fill="#00FF87" font-size="11" font-weight="700" text-anchor="middle">TI BQ76940</text>
+<text x="110" y="327" fill="rgba(0,255,135,.7)" font-size="8" text-anchor="middle">LTC6804-2 / ISL94202</text>
+<text x="110" y="340" fill="rgba(0,255,135,.55)" font-size="8" text-anchor="middle">±1mV accuracy</text>
+<text x="110" y="352" fill="rgba(0,255,135,.45)" font-size="7" text-anchor="middle">SPI interface to MCU</text>
+
+<!-- NTC Thermistors -->
+<rect x="210" y="275" width="140" height="80" rx="8" fill="rgba(0,255,135,.05)" stroke="rgba(0,255,135,.35)" stroke-width="1.2"/>
+<text x="220" y="291" fill="rgba(0,255,135,.4)" font-size="7" font-weight="700">TEMPERATURE SENSORS</text>
+<text x="280" y="312" fill="rgba(0,255,135,.9)" font-size="10" font-weight="700" text-anchor="middle">NTC 10kΩ</text>
+<text x="280" y="327" fill="rgba(0,255,135,.65)" font-size="8" text-anchor="middle">1 per cell + ambient</text>
+<text x="280" y="340" fill="rgba(0,255,135,.5)" font-size="8" text-anchor="middle">Voltage divider → ADC</text>
+<text x="280" y="352" fill="rgba(0,255,135,.4)" font-size="7" text-anchor="middle">TMP36 / DS18B20</text>
+
+<!-- Current sensor -->
+<rect x="365" y="275" width="150" height="80" rx="8" fill="rgba(0,255,135,.05)" stroke="rgba(0,255,135,.35)" stroke-width="1.2"/>
+<text x="375" y="291" fill="rgba(0,255,135,.4)" font-size="7" font-weight="700">CURRENT SENSOR</text>
+<text x="440" y="310" fill="rgba(0,255,135,.9)" font-size="10" font-weight="700" text-anchor="middle">LEM LA 25-NP</text>
+<text x="440" y="325" fill="rgba(0,255,135,.7)" font-size="8" text-anchor="middle">ACS758 Hall Effect</text>
+<text x="440" y="338" fill="rgba(0,255,135,.55)" font-size="8" text-anchor="middle">±0.5% accuracy</text>
+<text x="440" y="351" fill="rgba(0,255,135,.4)" font-size="7" text-anchor="middle">Non-invasive · ±150A</text>
+
+<!-- Voltage divider for pack voltage -->
+<rect x="530" y="275" width="130" height="80" rx="8" fill="rgba(0,255,135,.04)" stroke="rgba(0,255,135,.25)" stroke-width="1"/>
+<text x="540" y="291" fill="rgba(0,255,135,.4)" font-size="7" font-weight="700">PACK VOLTAGE SENSE</text>
+<text x="595" y="310" fill="rgba(0,255,135,.8)" font-size="10" font-weight="700" text-anchor="middle">Resistor</text>
+<text x="595" y="325" fill="rgba(0,255,135,.8)" font-size="10" font-weight="700" text-anchor="middle">Divider</text>
+<text x="595" y="340" fill="rgba(0,255,135,.55)" font-size="8" text-anchor="middle">Scales HV to ADC</text>
+<text x="595" y="352" fill="rgba(0,255,135,.4)" font-size="7" text-anchor="middle">0–3.3V range</text>
+
+<!-- Isolation barrier label -->
+<line x1="30" y1="367" x2="780" y2="367" stroke="rgba(255,179,0,.15)" stroke-width="1" stroke-dasharray="6,4"/>
+<rect x="310" y="360" width="180" height="16" rx="4" fill="rgba(255,179,0,.08)"/>
+<text x="400" y="372" fill="#FFB300" font-size="8" font-weight="700" text-anchor="middle" letter-spacing="1">⚡ GALVANIC ISOLATION BARRIER ⚡</text>
+<text x="140" y="372" fill="rgba(255,179,0,.4)" font-size="7" text-anchor="middle">ADUM1401 SPI isolator</text>
+<text x="640" y="372" fill="rgba(255,179,0,.4)" font-size="7" text-anchor="middle">HV side ←→ LV MCU side</text>
+
+<!-- ═══════════════════════════════════════════════
+     ROW 3 — MCU / PROCESSING / COMMS
+═══════════════════════════════════════════════ -->
+
+<!-- STM32 MCU — CENTER PIECE -->
+<rect x="320" y="435" width="220" height="120" rx="10" fill="rgba(0,212,255,.08)" stroke="#00D4FF" stroke-width="2" filter="url(#gc)"/>
+<text x="430" y="455" fill="rgba(0,212,255,.5)" font-size="8" font-weight="700" text-anchor="middle" letter-spacing="1.5">BMS MICROCONTROLLER</text>
+<text x="430" y="477" fill="#00D4FF" font-size="14" font-weight="800" text-anchor="middle">STM32F407</text>
+<text x="430" y="494" fill="rgba(0,212,255,.65)" font-size="8" text-anchor="middle">ARM Cortex-M4 · 168MHz</text>
+<text x="430" y="510" fill="rgba(0,212,255,.5)" font-size="8" text-anchor="middle">TI TMS320F28379D (alt.)</text>
+<line x1="340" y1="520" x2="540" y2="520" stroke="rgba(0,212,255,.12)" stroke-width="1"/>
+<text x="378" y="534" fill="rgba(0,212,255,.5)" font-size="7" text-anchor="middle">OCV lookup</text>
+<text x="430" y="534" fill="rgba(0,212,255,.5)" font-size="7" text-anchor="middle">Coulomb counting</text>
+<text x="498" y="534" fill="rgba(0,212,255,.5)" font-size="7" text-anchor="middle">State machine</text>
+<text x="430" y="548" fill="rgba(0,212,255,.4)" font-size="7" text-anchor="middle">SPI · I2C · ADC · CAN · UART · GPIO</text>
+
+<!-- Gate Driver -->
+<rect x="100" y="440" width="120" height="60" rx="7" fill="rgba(255,179,0,.06)" stroke="rgba(255,179,0,.4)" stroke-width="1"/>
+<text x="160" y="462" fill="#FFB300" font-size="9" font-weight="700" text-anchor="middle">GATE DRIVER</text>
+<text x="160" y="476" fill="rgba(255,179,0,.65)" font-size="8" text-anchor="middle">IR2110 / DRV8302</text>
+<text x="160" y="489" fill="rgba(255,179,0,.5)" font-size="8" text-anchor="middle">3.3V → 12V drive</text>
+
+<!-- CAN Transceiver -->
+<rect x="580" y="440" width="120" height="60" rx="7" fill="rgba(0,212,255,.05)" stroke="rgba(0,212,255,.3)" stroke-width="1"/>
+<text x="640" y="462" fill="rgba(0,212,255,.8)" font-size="9" font-weight="700" text-anchor="middle">CAN BUS</text>
+<text x="640" y="476" fill="rgba(0,212,255,.65)" font-size="8" text-anchor="middle">MCP2515 + TJA1050</text>
+<text x="640" y="489" fill="rgba(0,212,255,.5)" font-size="8" text-anchor="middle">500kbps · ISO 11898</text>
+
+<!-- UART/USB -->
+<rect x="580" y="515" width="120" height="52" rx="7" fill="rgba(0,212,255,.04)" stroke="rgba(0,212,255,.2)" stroke-width="1"/>
+<text x="640" y="534" fill="rgba(0,212,255,.75)" font-size="9" font-weight="700" text-anchor="middle">UART / USB</text>
+<text x="640" y="548" fill="rgba(0,212,255,.55)" font-size="8" text-anchor="middle">CP2102 bridge</text>
+<text x="640" y="560" fill="rgba(0,212,255,.4)" font-size="7" text-anchor="middle">115200 baud debug</text>
+
+<!-- Isolated DC-DC -->
+<rect x="100" y="515" width="120" height="52" rx="7" fill="rgba(255,179,0,.04)" stroke="rgba(255,179,0,.25)" stroke-width="1"/>
+<text x="160" y="534" fill="rgba(255,179,0,.75)" font-size="9" font-weight="700" text-anchor="middle">ISOLATED PSU</text>
+<text x="160" y="548" fill="rgba(255,179,0,.55)" font-size="8" text-anchor="middle">DC-DC converter</text>
+<text x="160" y="560" fill="rgba(255,179,0,.4)" font-size="7" text-anchor="middle">12V pack → 3.3V MCU</text>
+
+<!-- ═══════════════════════════════════════════════
+     ROW 4 — OUTPUT / HMI / MONITORING
+═══════════════════════════════════════════════ -->
+
+<!-- Vehicle ECU -->
+<rect x="30" y="610" width="130" height="70" rx="8" fill="rgba(0,212,255,.05)" stroke="rgba(0,212,255,.25)" stroke-width="1"/>
+<text x="95" y="633" fill="rgba(0,212,255,.8)" font-size="9" font-weight="700" text-anchor="middle">VEHICLE ECU</text>
+<text x="95" y="648" fill="rgba(0,212,255,.55)" font-size="8" text-anchor="middle">CAN bus receive</text>
+<text x="95" y="662" fill="rgba(0,212,255,.45)" font-size="8" text-anchor="middle">Motor controller</text>
+<text x="95" y="673" fill="rgba(0,212,255,.35)" font-size="7" text-anchor="middle">Throttle management</text>
+
+<!-- Dashboard display -->
+<rect x="185" y="610" width="145" height="70" rx="8" fill="rgba(0,212,255,.06)" stroke="#00D4FF" stroke-width="1.4"/>
+<text x="257" y="633" fill="#00D4FF" font-size="9" font-weight="700" text-anchor="middle">HTML DASHBOARD</text>
+<text x="257" y="648" fill="rgba(0,212,255,.65)" font-size="8" text-anchor="middle">Your Browser UI</text>
+<text x="257" y="662" fill="rgba(0,212,255,.5)" font-size="8" text-anchor="middle">Python Flask API</text>
+<text x="257" y="673" fill="rgba(0,212,255,.4)" font-size="7" text-anchor="middle">MATLAB/Colab backend</text>
+
+<!-- Warning LED panel -->
+<rect x="355" y="610" width="130" height="70" rx="8" fill="rgba(255,59,59,.05)" stroke="rgba(255,59,59,.3)" stroke-width="1"/>
+<text x="420" y="630" fill="rgba(255,59,59,.8)" font-size="9" font-weight="700" text-anchor="middle">FAULT OUTPUTS</text>
+<text x="420" y="645" fill="rgba(255,59,59,.6)" font-size="8" text-anchor="middle">GPIO → Warning LEDs</text>
+<text x="420" y="659" fill="rgba(255,59,59,.5)" font-size="8" text-anchor="middle">Buzzer alarm</text>
+<text x="420" y="672" fill="rgba(255,59,59,.4)" font-size="7" text-anchor="middle">Contactor trip signal</text>
+
+<!-- Logging -->
+<rect x="510" y="610" width="130" height="70" rx="8" fill="rgba(78,110,142,.06)" stroke="rgba(78,110,142,.3)" stroke-width="1"/>
+<text x="575" y="630" fill="rgba(78,110,142,.9)" font-size="9" font-weight="700" text-anchor="middle">DATA LOGGING</text>
+<text x="575" y="645" fill="rgba(78,110,142,.65)" font-size="8" text-anchor="middle">SD card / Flash</text>
+<text x="575" y="659" fill="rgba(78,110,142,.5)" font-size="8" text-anchor="middle">CSV / CAN log</text>
+<text x="575" y="672" fill="rgba(78,110,142,.4)" font-size="7" text-anchor="middle">Post-analysis / MATLAB</text>
+
+<!-- Charger comms -->
+<rect x="665" y="610" width="130" height="70" rx="8" fill="rgba(0,255,135,.04)" stroke="rgba(0,255,135,.2)" stroke-width="1"/>
+<text x="730" y="630" fill="rgba(0,255,135,.8)" font-size="9" font-weight="700" text-anchor="middle">CHARGER COMMS</text>
+<text x="730" y="645" fill="rgba(0,255,135,.6)" font-size="8" text-anchor="middle">CAN / PLC signal</text>
+<text x="730" y="659" fill="rgba(0,255,135,.5)" font-size="8" text-anchor="middle">CC/CV handshake</text>
+<text x="730" y="672" fill="rgba(0,255,135,.4)" font-size="7" text-anchor="middle">SAE J1772 / CHAdeMO</text>
+
+<!-- ═══════════════════════════════════════════════
+     RIGHT COLUMN — STANDARDS + THRESHOLDS
+═══════════════════════════════════════════════ -->
+<rect x="810" y="50" width="330" height="620" rx="10" fill="rgba(6,14,24,.7)" stroke="rgba(0,212,255,.07)" stroke-width="1"/>
+
+<!-- Standards -->
+<text x="975" y="75" fill="rgba(0,212,255,.5)" font-size="9" font-weight="700" text-anchor="middle" letter-spacing="1.5">STANDARDS &amp; PROTOCOLS</text>
+<g fill="none">
+  <rect x="826" y="83" width="298" height="26" rx="5" fill="rgba(0,212,255,.04)"/>
+  <rect x="826" y="115" width="298" height="26" rx="5" fill="rgba(0,255,135,.04)"/>
+  <rect x="826" y="147" width="298" height="26" rx="5" fill="rgba(255,179,0,.04)"/>
+  <rect x="826" y="179" width="298" height="26" rx="5" fill="rgba(0,212,255,.04)"/>
+  <rect x="826" y="211" width="298" height="26" rx="5" fill="rgba(78,110,142,.04)"/>
+</g>
+<text x="836" y="100" fill="rgba(0,212,255,.7)" font-size="9" font-weight="700">IEC 62133</text>
+<text x="960" y="100" fill="rgba(0,212,255,.5)" font-size="8">Li-Ion safety standard</text>
+<text x="836" y="132" fill="rgba(0,255,135,.7)" font-size="9" font-weight="700">ISO 26262</text>
+<text x="960" y="132" fill="rgba(0,255,135,.5)" font-size="8">Automotive functional safety (ASIL-B)</text>
+<text x="836" y="164" fill="#FFB300" font-size="9" font-weight="700">CAN 2.0B</text>
+<text x="960" y="164" fill="rgba(255,179,0,.6)" font-size="8">Vehicle communication protocol</text>
+<text x="836" y="196" fill="rgba(0,212,255,.7)" font-size="9" font-weight="700">SAE J1772</text>
+<text x="960" y="196" fill="rgba(0,212,255,.5)" font-size="8">EV charging connector standard</text>
+<text x="836" y="228" fill="rgba(78,110,142,.8)" font-size="9" font-weight="700">UN 38.3</text>
+<text x="960" y="228" fill="rgba(78,110,142,.5)" font-size="8">Battery transport safety testing</text>
+
+<!-- Threshold table -->
+<line x1="826" y1="248" x2="1124" y2="248" stroke="rgba(0,212,255,.08)" stroke-width="1"/>
+<text x="975" y="267" fill="rgba(255,179,0,.6)" font-size="9" font-weight="700" text-anchor="middle" letter-spacing="1.5">PROTECTION THRESHOLDS</text>
+<rect x="826" y="275" width="298" height="20" rx="3" fill="rgba(255,59,59,.08)"/>
+<text x="836" y="289" fill="#FF3B3B" font-size="9" font-weight="700">OV Overvoltage</text>
+<text x="1118" y="289" fill="#FF3B3B" font-size="9" font-weight="700" text-anchor="end">4.25 V / cell</text>
+<rect x="826" y="299" width="298" height="20" rx="3" fill="rgba(255,59,59,.06)"/>
+<text x="836" y="313" fill="rgba(255,59,59,.8)" font-size="9" font-weight="700">UV Undervoltage</text>
+<text x="1118" y="313" fill="rgba(255,59,59,.8)" font-size="9" font-weight="700" text-anchor="end">2.45 V / cell</text>
+<rect x="826" y="323" width="298" height="20" rx="3" fill="rgba(255,179,0,.06)"/>
+<text x="836" y="337" fill="#FFB300" font-size="9" font-weight="700">OT Overtemperature</text>
+<text x="1118" y="337" fill="#FFB300" font-size="9" font-weight="700" text-anchor="end">45 °C</text>
+<rect x="826" y="347" width="298" height="20" rx="3" fill="rgba(255,59,59,.06)"/>
+<text x="836" y="361" fill="rgba(255,59,59,.8)" font-size="9" font-weight="700">OC Overcurrent</text>
+<text x="1118" y="361" fill="rgba(255,59,59,.8)" font-size="9" font-weight="700" text-anchor="end">5.0 A</text>
+<rect x="826" y="371" width="298" height="20" rx="3" fill="rgba(255,179,0,.04)"/>
+<text x="836" y="385" fill="rgba(255,179,0,.7)" font-size="9" font-weight="700">Low SOC warning</text>
+<text x="1118" y="385" fill="rgba(255,179,0,.7)" font-size="9" font-weight="700" text-anchor="end">20 %</text>
+<rect x="826" y="395" width="298" height="20" rx="3" fill="rgba(255,59,59,.04)"/>
+<text x="836" y="409" fill="rgba(255,59,59,.7)" font-size="9" font-weight="700">SoH end-of-life</text>
+<text x="1118" y="409" fill="rgba(255,59,59,.7)" font-size="9" font-weight="700" text-anchor="end">80 %</text>
+
+<!-- Battery specs -->
+<line x1="826" y1="430" x2="1124" y2="430" stroke="rgba(0,212,255,.08)" stroke-width="1"/>
+<text x="975" y="449" fill="rgba(0,212,255,.5)" font-size="9" font-weight="700" text-anchor="middle" letter-spacing="1.5">PACK SPECIFICATIONS</text>
+<text x="836" y="470" fill="rgba(0,212,255,.6)" font-size="9">Configuration</text><text x="1118" y="470" fill="#DCE8F4" font-size="9" font-weight="700" text-anchor="end">3S1P Li-Ion</text>
+<text x="836" y="488" fill="rgba(0,212,255,.6)" font-size="9">Nominal voltage</text><text x="1118" y="488" fill="#DCE8F4" font-size="9" font-weight="700" text-anchor="end">11.1 V</text>
+<text x="836" y="506" fill="rgba(0,212,255,.6)" font-size="9">Capacity</text><text x="1118" y="506" fill="#DCE8F4" font-size="9" font-weight="700" text-anchor="end">4.3 Ah · 47.7 Wh</text>
+<text x="836" y="524" fill="rgba(0,212,255,.6)" font-size="9">Max charge voltage</text><text x="1118" y="524" fill="#DCE8F4" font-size="9" font-weight="700" text-anchor="end">12.6 V (4.2V × 3)</text>
+<text x="836" y="542" fill="rgba(0,212,255,.6)" font-size="9">Cut-off voltage</text><text x="1118" y="542" fill="#DCE8F4" font-size="9" font-weight="700" text-anchor="end">7.5 V (2.5V × 3)</text>
+<text x="836" y="560" fill="rgba(0,212,255,.6)" font-size="9">Cell chemistry</text><text x="1118" y="560" fill="#DCE8F4" font-size="9" font-weight="700" text-anchor="end">NCR18650 / LFP</text>
+<text x="836" y="578" fill="rgba(0,212,255,.6)" font-size="9">Balancing method</text><text x="1118" y="578" fill="#DCE8F4" font-size="9" font-weight="700" text-anchor="end">Passive (resistive)</text>
+<text x="836" y="596" fill="rgba(0,212,255,.6)" font-size="9">SoC estimation</text><text x="1118" y="596" fill="#DCE8F4" font-size="9" font-weight="700" text-anchor="end">Coulomb counting + OCV</text>
+<text x="836" y="614" fill="rgba(0,212,255,.6)" font-size="9">Communication</text><text x="1118" y="614" fill="#DCE8F4" font-size="9" font-weight="700" text-anchor="end">CAN 2.0B + UART</text>
+<text x="836" y="632" fill="rgba(0,212,255,.6)" font-size="9">MCU loop rate</text><text x="1118" y="632" fill="#DCE8F4" font-size="9" font-weight="700" text-anchor="end">10 ms (100 Hz)</text>
+
+<!-- ═══════════════════════════════════════════════
+     CONNECTING ARROWS
+═══════════════════════════════════════════════ -->
+
+<!-- Cells → BQ76940 (voltage sensing) -->
+<line x1="66" y1="220" x2="66" y2="268" stroke="#00FF87" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+<text x="34" y="248" fill="rgba(0,255,135,.5)" font-size="7">V sense</text>
+<line x1="156" y1="220" x2="140" y2="268" stroke="#00FF87" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+<line x1="246" y1="220" x2="178" y2="268" stroke="#00FF87" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+
+<!-- Cells → NTC thermistors -->
+<line x1="156" y1="220" x2="260" y2="268" stroke="rgba(0,255,135,.5)" stroke-width="1.2" stroke-dasharray="3,4" marker-end="url(#arr-g)"/>
+
+<!-- Pack → Current sensor (main current path) -->
+<line x1="282" y1="140" x2="320" y2="140" stroke="#FF3B3B" stroke-width="2" marker-end="url(#arr-r)"/>
+<text x="288" y="133" fill="rgba(255,59,59,.5)" font-size="7">I pack</text>
+<line x1="420" y1="140" x2="460" y2="90" stroke="#FFB300" stroke-width="2" marker-end="url(#arr-a)"/>
+<!-- Pre-charge → Contactor -->
+<line x1="420" y1="90" x2="460" y2="90" stroke="#FFB300" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-a)"/>
+
+<!-- Contactor → Motor -->
+<line x1="570" y1="90" x2="620" y2="90" stroke="#00D4FF" stroke-width="2" marker-end="url(#arr-c)"/>
+<!-- Contactor → Charger (input) -->
+<line x1="570" y1="135" x2="620" y2="175" stroke="#00FF87" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-g)"/>
+
+<!-- Balance MOSFETs connecting back to cells (dashed) -->
+<line x1="370" y1="148" x2="246" y2="220" stroke="rgba(0,212,255,.4)" stroke-width="1" stroke-dasharray="3,5" marker-end="url(#arr-c)"/>
+
+<!-- SENSING → MCU (SPI) -->
+<line x1="110" y1="355" x2="380" y2="430" stroke="#00FF87" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+<text x="200" y="405" fill="rgba(0,255,135,.4)" font-size="7">SPI</text>
+<line x1="280" y1="355" x2="390" y2="430" stroke="rgba(0,255,135,.7)" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+<text x="296" y="408" fill="rgba(0,255,135,.35)" font-size="7">ADC</text>
+<line x1="440" y1="355" x2="430" y2="428" stroke="rgba(0,255,135,.7)" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+<text x="416" y="400" fill="rgba(0,255,135,.35)" font-size="7">ADC</text>
+<line x1="595" y1="355" x2="480" y2="428" stroke="rgba(0,255,135,.6)" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+<text x="540" y="400" fill="rgba(0,255,135,.35)" font-size="7">ADC</text>
+
+<!-- MCU → Gate Driver → Contactor + Balance -->
+<line x1="320" y1="480" x2="220" y2="475" stroke="#FFB300" stroke-width="1.5" marker-end="url(#arr-a)"/>
+<text x="252" y="468" fill="rgba(255,179,0,.4)" font-size="7">GPIO</text>
+<line x1="220" y1="440" x2="420" y2="200" stroke="rgba(255,179,0,.4)" stroke-width="1" stroke-dasharray="3,5" marker-end="url(#arr-a)"/>
+
+<!-- MCU → CAN → Vehicle ECU + Dashboard -->
+<line x1="540" y1="490" x2="580" y2="490" stroke="rgba(0,212,255,.8)" stroke-width="1.5" marker-end="url(#arr-c)"/>
+<line x1="640" y1="500" x2="640" y2="568" stroke="rgba(0,212,255,.6)" stroke-width="1.2" marker-end="url(#arr-c)"/>
+<text x="645" y="538" fill="rgba(0,212,255,.4)" font-size="7">UART</text>
+<line x1="580" y1="470" x2="95" y2="608" stroke="rgba(0,212,255,.3)" stroke-width="1" stroke-dasharray="4,6" marker-end="url(#arr-c)"/>
+<line x1="600" y1="480" x2="257" y2="608" stroke="#00D4FF" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arr-c)"/>
+<text x="410" y="560" fill="rgba(0,212,255,.35)" font-size="7">CAN / UART → Dashboard</text>
+
+<!-- MCU → Fault outputs -->
+<line x1="430" y1="555" x2="420" y2="608" stroke="rgba(255,59,59,.6)" stroke-width="1.5" marker-end="url(#arr-r)"/>
+<text x="396" y="592" fill="rgba(255,59,59,.4)" font-size="7">GPIO</text>
+
+<!-- MCU → Data logging -->
+<line x1="490" y1="550" x2="540" y2="608" stroke="rgba(78,110,142,.5)" stroke-width="1.2" stroke-dasharray="3,4" marker-end="url(#arr-w)"/>
+
+<!-- MCU → Charger comms -->
+<line x1="540" y1="500" x2="730" y2="608" stroke="rgba(0,255,135,.4)" stroke-width="1.2" stroke-dasharray="4,5" marker-end="url(#arr-g)"/>
+
+</svg>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     WHERE TO CHANGE VALUES — CHEAT SHEET
+═══════════════════════════════════════════════ -->
+<div class="chg-section">
+
+  <div class="chg-card">
+    <div class="chg-title">📁 File: minibms_ev_dashboard.html — Demo Mode (no server needed)</div>
+
+    <div class="chg-group-label">Fault thresholds — to trigger faults easily during demo</div>
+
+    <div class="chg-row">
+      <span class="chg-file">HTML</span>
+      <span class="chg-line">Line 778</span>
+      <span class="chg-code">const FAULT_OV = <span class="ov">4.25</span>  → change to <span class="ok">3.90</span></span>
+    </div>
+    <div class="chg-desc">Overvoltage trips at 3.90V instead of 4.25V — fires at normal idle voltage</div>
+
+    <div class="chg-row">
+      <span class="chg-file">HTML</span>
+      <span class="chg-line">Line 778</span>
+      <span class="chg-code">const FAULT_UV = <span class="ov">2.45</span>  → change to <span class="ok">3.50</span></span>
+    </div>
+    <div class="chg-desc">Undervoltage trips at 3.50V — fires quickly on discharge</div>
+
+    <div class="chg-row">
+      <span class="chg-file">HTML</span>
+      <span class="chg-line">Line 778</span>
+      <span class="chg-code">const FAULT_OT = <span class="ov">45.0</span> → change to <span class="ok">32.0</span></span>
+    </div>
+    <div class="chg-desc">Overtemperature at 32°C — fires almost immediately, great for demo</div>
+
+    <div class="chg-row">
+      <span class="chg-file">HTML</span>
+      <span class="chg-line">Line 778</span>
+      <span class="chg-code">const FAULT_OC = <span class="ov">5.0</span>  → change to <span class="ok">2.0</span></span>
+    </div>
+    <div class="chg-desc">Overcurrent at 2A instead of 5A — set slider to 2.5A → fault fires</div>
+
+    <div class="chg-group-label">Starting conditions — to begin near a warning boundary</div>
+
+    <div class="chg-row">
+      <span class="chg-file">HTML</span>
+      <span class="chg-line">Line 796</span>
+      <span class="chg-code">soc: <span class="ov">72</span>  → change to <span class="am">22</span></span>
+    </div>
+    <div class="chg-desc">Starts at 22% SOC — low SOC warning fires within seconds of discharge</div>
+
+    <div class="chg-row">
+      <span class="chg-file">HTML</span>
+      <span class="chg-line">Line 796</span>
+      <span class="chg-code">tcmd: <span class="ov">28</span> → change to <span class="am">43</span></span>
+    </div>
+    <div class="chg-desc">Starts at 43°C — just 2 degrees from OT fault, very dramatic for demo</div>
+
+    <div class="chg-row">
+      <span class="chg-file">HTML</span>
+      <span class="chg-line">Line 796</span>
+      <span class="chg-code">soc: <span class="ov">72</span>  → change to <span class="ov">3</span></span>
+    </div>
+    <div class="chg-desc">Starts critically low — UV fault fires in first discharge cycle</div>
+  </div>
+
+  <div class="chg-card">
+    <div class="chg-title">📁 File: COLAB_PASTE_THIS.py — When connected to live Python/Colab backend</div>
+
+    <div class="chg-group-label">Same thresholds — same effect, but for the server-side simulator</div>
+
+    <div class="chg-row">
+      <span class="chg-file">PY</span>
+      <span class="chg-line">Line 23</span>
+      <span class="chg-code">FAULT_OV = <span class="ov">4.25</span>  → change to <span class="ok">3.90</span></span>
+    </div>
+    <div class="chg-desc">Server-side overvoltage threshold — same effect as HTML change</div>
+
+    <div class="chg-row">
+      <span class="chg-file">PY</span>
+      <span class="chg-line">Line 23</span>
+      <span class="chg-code">FAULT_OT = <span class="ov">45.0</span> → change to <span class="ok">32.0</span></span>
+    </div>
+    <div class="chg-desc">Server overtemperature threshold — use temp slider to 33°C → immediate fault</div>
+
+    <div class="chg-row">
+      <span class="chg-file">PY</span>
+      <span class="chg-line">Line 23</span>
+      <span class="chg-code">FAULT_OC = <span class="ov">5.0</span>  → change to <span class="ok">2.0</span></span>
+    </div>
+    <div class="chg-desc">Server overcurrent threshold — use current slider to 2.5A → fault fires</div>
+
+    <div class="chg-row">
+      <span class="chg-file">PY</span>
+      <span class="chg-line">Line 45</span>
+      <span class="chg-code">self.soc = <span class="ov">72.0</span> → change to <span class="am">22.0</span></span>
+    </div>
+    <div class="chg-desc">Server starting SOC — begins near low SOC warning boundary</div>
+
+    <div class="chg-group-label">Review demo sequence — do this live in front of examiner</div>
+    <div style="background:rgba(2,6,9,.6);border-radius:8px;padding:12px 14px;font-family:'Courier New',monospace;font-size:10px;line-height:2;color:#4E6E8E">
+      <span style="color:#00D4FF">Step 1</span> → Load dashboard → IDLE (green, nominal)<br>
+      <span style="color:#00D4FF">Step 2</span> → Click <span style="color:#DCE8F4">Drive</span> → DISCHARGE state, charts animate<br>
+      <span style="color:#FFB300">Step 3</span> → Drag temp slider to 33°C → OT FAULT fires<br>
+      <span style="color:#4E6E8E">         → State→FAULT, red flash, OT row lights red, log entry</span><br>
+      <span style="color:#00FF87">Step 4</span> → Click <span style="color:#DCE8F4">Reset</span> → back to IDLE, all clear<br>
+      <span style="color:#FFB300">Step 5</span> → Set current to 2.5A → Drive → OC FAULT fires<br>
+      <span style="color:#00FF87">Step 6</span> → Reset → Drive → let SOC drop to 20% → SOC warning<br>
+      <span style="color:#FF3B3B">Step 7</span> → Click <span style="color:#DCE8F4">⚠ Fault</span> button → ALL faults simultaneously<br>
+      <span style="color:#4E6E8E">         → Contactor opens, all 4 rows red, state=FAULT</span><br>
+      <span style="color:#00FF87">Step 8</span> → Click <span style="color:#DCE8F4">Reset</span> → system recovers, IDLE
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="leg-item"><div class="leg-dot" style="background:rgba(255,59,59,.4)"></div>High Voltage / Power path</div>
+  <div class="leg-item"><div class="leg-dot" style="background:rgba(0,255,135,.4)"></div>Sensing / Measurement</div>
+  <div class="leg-item"><div class="leg-dot" style="background:rgba(0,212,255,.4)"></div>MCU / Communication</div>
+  <div class="leg-item"><div class="leg-dot" style="background:rgba(255,179,0,.4)"></div>Protection / Switching</div>
+  <div class="leg-item"><div class="leg-dot" style="background:rgba(78,110,142,.4)"></div>Output / HMI</div>
+</div>
+
+<div style="text-align:center;font-size:10px;color:#253A50;margin-top:16px;padding-bottom:16px">
+  MiniBMS Hardware Reference · 3S Li-Ion EV Battery Management System · Model-Based Design
+</div>
+
+</body>
+</html>
