@@ -191,7 +191,7 @@ MiniBMS is an academic, model-based design BMS that implements the core function
 | Communication | REST API (HTTP) replacing CAN/UART in hardware |
 | Display | HTML dashboard replacing instrument cluster |
 
-The MATLAB Simulink model (`MiniBMS.slx`) generates the control algorithm, and the Python Flask server (`app.py`) implements the equivalent real-time processing for deployment.
+The MATLAB Simulink model (`MiniBMS.slx`) generates the control algorithm, and the Python Flask server (`COLAB_PASTE_THIS.py`) implements the equivalent real-time processing for deployment.
 
 ---
 

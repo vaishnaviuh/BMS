@@ -4,12 +4,17 @@
 
 ## Files in this package
 
+All project files are in the `MiniBMS-main/` folder.
+
 | File | Purpose |
 |---|---|
-| `COLAB_PASTE_THIS.py` | **← Start here.** Paste into Google Colab, run, get URL |
-| `app.py` | Full annotated Flask server (local or cloud deploy) |
+| `COLAB_PASTE_THIS.py` | **← Start here.** Flask backend: paste into Google Colab (or run locally), get URL |
+| `minibms_ev_dashboard.html` | EV dashboard that shows the live BMS data |
+| `MiniBMS/MiniBMS.slx` | Simulink BMS model |
 | `MiniBMSExport.m` | MATLAB script to export Simulink workspace → JSON/CSV |
+| `minibms_export.json` | Example exported data |
 | `requirements.txt` | pip packages for local install |
+| `docs/` | Dashboard, hardware and BMS guides |
 
 ---
 
@@ -43,8 +48,9 @@
 ## Option B — Run locally
 
 ```bash
+cd MiniBMS-main
 pip install -r requirements.txt
-python app.py
+python COLAB_PASTE_THIS.py
 # Server runs at http://localhost:5000
 ```
 

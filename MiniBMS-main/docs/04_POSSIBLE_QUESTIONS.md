@@ -145,7 +145,7 @@ Transitions:
 ---
 
 **Q20. What is the role of the Flask server in MiniBMS?**
-The Flask server (`app.py`) acts as the **BMS backend**. It:
+The Flask server (`COLAB_PASTE_THIS.py`) acts as the **BMS backend**. It:
 - Runs the BMS simulation (state machine, Coulomb counting, fault detection) in a background thread
 - Exposes REST API endpoints (e.g., `/api/live`, `/api/faults`, `/api/control`)
 - The HTML dashboard fetches data from these endpoints every second
