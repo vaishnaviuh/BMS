@@ -1,5 +1,7 @@
 # MiniBMS Backend — Setup Guide
 
+> **Credit:** The Simulink BMS model is based on [MiniBMS by ks-santosh](https://github.com/ks-santosh/MiniBMS) (MIT License, see `MiniBMS-main/LICENSE`). My additions: the EV dashboard, the Flask/Colab backend, the MATLAB export script and the docs.
+
 ## Files in this package
 
 | File | Purpose |
